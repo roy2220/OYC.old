@@ -61,7 +61,7 @@ struct PrimaryExpression: Expression
         const FunctionLiteral *functionLiteral;
     };
 
-    OYC_EXPRESSION_VISITOR_ACCEPTOR
+    OYC_EXPRESSION_VISIT_ACCEPTOR(PrimaryExpression)
 };
 
 
@@ -79,7 +79,7 @@ struct UnaryExpression: Expression
     TokenType op = TokenType::No;
     std::unique_ptr<Expression> operand;
 
-    OYC_EXPRESSION_VISITOR_ACCEPTOR
+    OYC_EXPRESSION_VISIT_ACCEPTOR(UnaryExpression)
 };
 
 
@@ -89,7 +89,7 @@ struct BinaryExpression: Expression
     std::unique_ptr<Expression> operand1;
     std::unique_ptr<Expression> operand2;
 
-    OYC_EXPRESSION_VISITOR_ACCEPTOR
+    OYC_EXPRESSION_VISIT_ACCEPTOR(BinaryExpression)
 };
 
 
@@ -100,7 +100,7 @@ struct TernaryExpression: Expression
     std::unique_ptr<Expression> operand2;
     std::unique_ptr<Expression> operand3;
 
-    OYC_EXPRESSION_VISITOR_ACCEPTOR
+    OYC_EXPRESSION_VISIT_ACCEPTOR(TernaryExpression)
 };
 
 
@@ -109,7 +109,7 @@ struct RetrievalExpression: Expression
     std::unique_ptr<Expression> retrievee;
     std::unique_ptr<Expression> key;
 
-    OYC_EXPRESSION_VISITOR_ACCEPTOR
+    OYC_EXPRESSION_VISIT_ACCEPTOR(RetrievalExpression)
 };
 
 
@@ -118,7 +118,7 @@ struct InvocationExpression: Expression
     std::unique_ptr<Expression> invokee;
     std::vector<std::unique_ptr<Expression>> arguments;
 
-    OYC_EXPRESSION_VISITOR_ACCEPTOR
+    OYC_EXPRESSION_VISIT_ACCEPTOR(InvocationExpression)
 };
 
 } // namespace OYC

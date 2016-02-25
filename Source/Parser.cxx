@@ -467,14 +467,14 @@ Parser::matchForeachStatement()
     ExpectToken(peekToken(1), TokenType::AutoKeyword);
     readToken();
     ExpectToken(peekToken(1), TokenType::Identifier);
-    match->identifier1 = getIdentifier();
+    match->variableName1 = getIdentifier();
     ExpectToken(peekToken(1), MakeTokenType(','));
     readToken();
     ExpectToken(peekToken(1), TokenType::Identifier);
-    match->identifier2 = getIdentifier();
+    match->variableName2 = getIdentifier();
     ExpectToken(peekToken(1), MakeTokenType(':'));
     readToken();
-    match->aggregate = matchExpression1();
+    match->collection = matchExpression1();
     ExpectToken(peekToken(1), MakeTokenType(')'));
     readToken();
     const Token *token = &peekToken(1);
@@ -790,26 +790,26 @@ Parser::getFloatingPoint()
 const std::string *
 Parser::getString()
 {
-    // std::string string = EvaluateStringLiteral(readToken().value);
-    // const Token *token = &peekToken(1);
+    std::string string = EvaluateStringLiteral(readToken().value);
+    const Token *token = &peekToken(1);
 
-    // while (token->type == TokenType::StringLiteral) {
-    //     string.append(EvaluateStringLiteral(readToken().value));
-    //     token = &peekToken(1);
-    // }
+    while (token->type == TokenType::StringLiteral) {
+        string.append(EvaluateStringLiteral(readToken().value));
+        token = &peekToken(1);
+    }
 
-    // std::pair<std::unordered_set<std::string>::iterator
-    //           , bool> result = programData_->strings.insert(std::move(string));
-    // return &*result.first;
+    std::pair<std::unordered_set<std::string>::iterator
+              , bool> result = programData_->strings.insert(std::move(string));
+    return &*result.first;
 }
 
 
 const std::string *
 Parser::getIdentifier()
 {
-    // std::pair<std::unordered_set<std::string>::iterator
-    //           , bool> result = programData_->identifiers.insert(readToken().value);
-    // return &*result.first;
+    std::pair<std::unordered_set<std::string>::iterator
+              , bool> result = programData_->identifiers.insert(readToken().value);
+    return &*result.first;
 }
 
 
