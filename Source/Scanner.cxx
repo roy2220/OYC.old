@@ -45,6 +45,15 @@ Scanner::readToken()
         int c2;
         int c3;
 
+    case '\t':
+    case '\n':
+    case '\v':
+    case '\f':
+    case '\r':
+    case ' ':
+        matchWhiteSpaceToken(&token);
+        break;
+
     case '!':
     case '%':
     case '&':
@@ -149,17 +158,78 @@ Scanner::readToken()
 
         break;
 
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+        matchNumberLiteralToken(&token);
+        break;
+
+    case 'A':
+    case 'B':
+    case 'C':
+    case 'D':
+    case 'E':
+    case 'F':
+    case 'G':
+    case 'H':
+    case 'I':
+    case 'J':
+    case 'K':
+    case 'L':
+    case 'M':
+    case 'N':
+    case 'O':
+    case 'P':
+    case 'Q':
+    case 'R':
+    case 'S':
+    case 'T':
+    case 'U':
+    case 'V':
+    case 'W':
+    case 'X':
+    case 'Y':
+    case 'Z':
+    case '_':
+    case 'a':
+    case 'b':
+    case 'c':
+    case 'd':
+    case 'e':
+    case 'f':
+    case 'g':
+    case 'h':
+    case 'i':
+    case 'j':
+    case 'k':
+    case 'l':
+    case 'm':
+    case 'n':
+    case 'o':
+    case 'p':
+    case 'q':
+    case 'r':
+    case 's':
+    case 't':
+    case 'u':
+    case 'v':
+    case 'w':
+    case 'x':
+    case 'y':
+    case 'z':
+        matchNameToken(&token);
+        break;
+
     default:
-        if (std::isspace(c1)) {
-            matchWhiteSpaceToken(&token);
-        } else if (std::isdigit(c1)) {
-            matchNumberLiteralToken(&token);
-        } else if (std::isalpha(c1) || c1 == '_') {
-            matchNameToken(&token);
-        } else {
-            token.value += readChar();
-            token.type = TokenType::Illegal;
-        }
+        token.value += readChar();
+        token.type = TokenType::Illegal;
     }
 
     return token;
@@ -234,7 +304,7 @@ Scanner::matchCommentToken(Token *token)
         token->value += readChar();
         c = peekChar(1);
 
-        while (c >= 0) {
+        for (;;) {
             if (c == '*') {
                 token->value += readChar();
                 c = peekChar(1);
@@ -245,12 +315,15 @@ Scanner::matchCommentToken(Token *token)
                     return;
                 }
             } else {
+                if (c < 0) {
+                    token->type = TokenType::Illegal;
+                    return;
+                }
+
                 token->value += readChar();
                 c = peekChar(1);
             }
         }
-
-        token->type = TokenType::Illegal;
     } else {
         token->value += readChar();
         c = peekChar(1);
@@ -377,18 +450,36 @@ Scanner::matchStringLiteralToken(Token *token)
     token->value += readChar();
     int c = peekChar(1);
 
-    while (c >= 0 && c != '\n') {
-        if (c == '\"') {
-            token->value += readChar();
-            token->type = TokenType::StringLiteral;
-            return;
-        }
-
+    for (;;) {
         if (c == '\\') {
             token->value += readChar();
             c = peekChar(1);
+            bool missFlag = false;
 
-            if (isodigit(c)) {
+            switch (c) {
+            case '\"':
+            case '\'':
+            case '\?':
+            case '\\':
+            case 'a':
+            case 'b':
+            case 'f':
+            case 'n':
+            case 'r':
+            case 't':
+            case 'v':
+                token->value += readChar();
+                c = peekChar(1);
+                break;
+
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
                 token->value += readChar();
                 c = peekChar(1);
 
@@ -401,15 +492,15 @@ Scanner::matchStringLiteralToken(Token *token)
                         c = peekChar(1);
                     }
                 }
-            } else if (c == 'X' || c == 'x' ) {
+
+                break;
+
+            case 'x':
                 token->value += readChar();
                 c = peekChar(1);
 
                 if (!std::isxdigit(c)) {
-                    if (c >= 0 && c != '\n') {
-                        token->value += readChar();
-                    }
-
+                    missFlag = true;
                     break;
                 }
 
@@ -420,25 +511,37 @@ Scanner::matchStringLiteralToken(Token *token)
                     token->value += readChar();
                     c = peekChar(1);
                 }
-            } else {
-                if (std::strchr("\"\'\?\\abfnrtv", c) == nullptr) {
-                    if (c >= 0 && c != '\n') {
-                        token->value += readChar();
-                    }
 
-                    break;
+                break;
+
+            default:
+                missFlag = true;
+            }
+
+            if (missFlag) {
+                if (c >= 0 && c != '\n') {
+                    token->value += readChar();
+                }
+
+                token->type = TokenType::Illegal;
+                return;
+            }
+        } else {
+            if (c == '\"') {
+                token->value += readChar();
+                token->type = TokenType::StringLiteral;
+                return;
+            } else {
+                if (c < 0 || c == '\n') {
+                    token->type = TokenType::Illegal;
+                    return;
                 }
 
                 token->value += readChar();
                 c = peekChar(1);
             }
-        } else {
-            token->value += readChar();
-            c = peekChar(1);
         }
     }
-
-    token->type = TokenType::Illegal;
 }
 
 

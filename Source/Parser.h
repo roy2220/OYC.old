@@ -62,7 +62,7 @@ private:
 
     std::unique_ptr<Expression> matchExpression1();
     std::unique_ptr<Expression> matchExpression2();
-    std::unique_ptr<Expression> matchExpression3(int);
+    std::unique_ptr<Expression> matchExpression3(int *);
     std::unique_ptr<Expression> matchExpression4();
     std::unique_ptr<Expression> matchExpression5();
     std::unique_ptr<Expression> matchExpression6();
