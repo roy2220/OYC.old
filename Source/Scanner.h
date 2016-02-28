@@ -32,6 +32,7 @@ private:
     int peekChar(int);
     int readChar();
 
+    void matchToken(Token *);
     void matchWhiteSpaceToken(Token *);
     void matchCommentToken(Token *);
     void matchNumberLiteralToken(Token *);

@@ -2,9 +2,9 @@
 
 #include <cctype>
 #include <cstring>
-#include <unordered_map>
-#include <type_traits>
 #include <iterator>
+#include <type_traits>
+#include <unordered_map>
 
 #include "Token.h"
 
@@ -37,10 +37,61 @@ Scanner::readToken()
     Token token;
     token.lineNumber = lineNumber_;
     token.columnNumber = columnNumber_;
+    matchToken(&token);
+    return token;
+}
+
+
+int
+Scanner::doReadChar()
+{
+    return charReader_();
+}
+
+
+int
+Scanner::peekChar(int position)
+{
+    for (int n = position - static_cast<int>(prereadChars_.size()); n >= 1; --n) {
+        prereadChars_.push_back(doReadChar());
+    }
+
+    return *std::next(prereadChars_.begin(), position - 1);
+}
+
+
+int
+Scanner::readChar()
+{
+    int c;
+
+    if (prereadChars_.empty()) {
+        c = doReadChar();
+    } else {
+        c = prereadChars_.front();
+        prereadChars_.pop_front();
+    }
+
+    if (c >= 0) {
+        if (c == '\n') {
+            ++lineNumber_;
+            columnNumber_ = 1;
+        } else {
+            ++columnNumber_;
+        }
+    }
+
+    return c;
+}
+
+
+void
+Scanner::matchToken(Token *match)
+{
     int c1 = peekChar(1);
 
     if (c1 < 0) {
-        token.type = TokenType::EndOfFile;
+        match->type = TokenType::EndOfFile;
     } else switch (c1) {
         int c2;
         int c3;
@@ -51,7 +102,7 @@ Scanner::readToken()
     case '\f':
     case '\r':
     case ' ':
-        matchWhiteSpaceToken(&token);
+        matchWhiteSpaceToken(match);
         break;
 
     case '!':
@@ -61,20 +112,20 @@ Scanner::readToken()
     case '^':
     case '|':
     case '=':
-        token.value += readChar();
+        match->value += readChar();
         c2 = peekChar(1);
 
         if (c2 == '=') {
-            token.value += readChar();
-            token.type = MakeTokenType(c1, c2);
+            match->value += readChar();
+            match->type = MakeTokenType(c1, c2);
         } else {
-            token.type = MakeTokenType(c1);
+            match->type = MakeTokenType(c1);
         }
 
         break;
 
     case '\"':
-        matchStringLiteralToken(&token);
+        matchStringLiteralToken(match);
         break;
 
     case '(':
@@ -88,20 +139,20 @@ Scanner::readToken()
     case '{':
     case '}':
     case '~':
-        token.value += readChar();
-        token.type = MakeTokenType(c1);
+        match->value += readChar();
+        match->type = MakeTokenType(c1);
         break;
 
     case '+':
     case '-':
-        token.value += readChar();
+        match->value += readChar();
         c2 = peekChar(1);
 
         if (c2 == c1 || c2 == '=') {
-            token.value += readChar();
-            token.type = MakeTokenType(c1, c2);
+            match->value += readChar();
+            match->type = MakeTokenType(c1, c2);
         } else {
-            token.type = MakeTokenType(c1);
+            match->type = MakeTokenType(c1);
         }
 
         break;
@@ -110,10 +161,10 @@ Scanner::readToken()
         c2 = peekChar(2);
 
         if (std::isdigit(c2)) {
-            matchNumberLiteralToken(&token);
+            matchNumberLiteralToken(match);
         } else {
-            token.value += readChar();
-            token.type = MakeTokenType(c1);
+            match->value += readChar();
+            match->type = MakeTokenType(c1);
         }
 
         break;
@@ -122,38 +173,38 @@ Scanner::readToken()
         c2 = peekChar(2);
 
         if (c2 == '*' || c2 == '/') {
-            matchCommentToken(&token);
+            matchCommentToken(match);
         } else if (c2 == '=') {
-            token.value += readChar();
-            token.value += readChar();
-            token.type = MakeTokenType(c1, c2);
+            match->value += readChar();
+            match->value += readChar();
+            match->type = MakeTokenType(c1, c2);
         } else {
-            token.value += readChar();
-            token.type = MakeTokenType(c1);
+            match->value += readChar();
+            match->type = MakeTokenType(c1);
         }
 
         break;
 
     case '<':
     case '>':
-        token.value += readChar();
+        match->value += readChar();
         c2 = peekChar(1);
 
         if (c2 == c1) {
-            token.value += readChar();
+            match->value += readChar();
             c3 = peekChar(1);
 
             if (c3 == '=') {
-                token.value += readChar();
-                token.type = MakeTokenType(c1, c2, c3);
+                match->value += readChar();
+                match->type = MakeTokenType(c1, c2, c3);
             } else {
-                token.type = MakeTokenType(c1, c1);
+                match->type = MakeTokenType(c1, c1);
             }
         } else if (c2 == '=') {
-            token.value += readChar();
-            token.type = MakeTokenType(c1, c2);
+            match->value += readChar();
+            match->type = MakeTokenType(c1, c2);
         } else {
-            token.type = MakeTokenType(c1);
+            match->type = MakeTokenType(c1);
         }
 
         break;
@@ -168,7 +219,7 @@ Scanner::readToken()
     case '7':
     case '8':
     case '9':
-        matchNumberLiteralToken(&token);
+        matchNumberLiteralToken(match);
         break;
 
     case 'A':
@@ -224,138 +275,93 @@ Scanner::readToken()
     case 'x':
     case 'y':
     case 'z':
-        matchNameToken(&token);
+        matchNameToken(match);
         break;
 
     default:
-        token.value += readChar();
-        token.type = TokenType::Illegal;
+        match->value += readChar();
+        match->type = TokenType::Illegal;
     }
-
-    return token;
-}
-
-
-int
-Scanner::doReadChar()
-{
-    return charReader_();
-}
-
-
-int
-Scanner::peekChar(int position)
-{
-    for (int n = position - static_cast<int>(prereadChars_.size()); n >= 1; --n) {
-        prereadChars_.push_back(doReadChar());
-    }
-
-    return *std::next(prereadChars_.begin(), position - 1);
-}
-
-
-int
-Scanner::readChar()
-{
-    int c;
-
-    if (prereadChars_.empty()) {
-        c = doReadChar();
-    } else {
-        c = prereadChars_.front();
-        prereadChars_.pop_front();
-    }
-
-    if (c >= 0) {
-        if (c == '\n') {
-            ++lineNumber_;
-            columnNumber_ = 1;
-        } else {
-            ++columnNumber_;
-        }
-    }
-
-    return c;
 }
 
 
 void
-Scanner::matchWhiteSpaceToken(Token *token)
+Scanner::matchWhiteSpaceToken(Token *match)
 {
-    token->value += readChar();
+    match->value += readChar();
     int c = peekChar(1);
 
     while (std::isspace(c)) {
-        token->value += readChar();
+        match->value += readChar();
         c = peekChar(1);
     }
 
-    token->type = TokenType::WhiteSpace;
+    match->type = TokenType::WhiteSpace;
 }
 
 
 void
-Scanner::matchCommentToken(Token *token)
+Scanner::matchCommentToken(Token *match)
 {
-    token->value += readChar();
+    match->value += readChar();
     int c = peekChar(1);
 
     if (c == '*') {
-        token->value += readChar();
+        match->value += readChar();
         c = peekChar(1);
 
         for (;;) {
             if (c == '*') {
-                token->value += readChar();
+                match->value += readChar();
                 c = peekChar(1);
 
                 if (c == '/') {
-                    token->value += readChar();
-                    token->type = TokenType::Comment;
+                    match->value += readChar();
+                    match->type = TokenType::Comment;
                     return;
                 }
             } else {
                 if (c < 0) {
-                    token->type = TokenType::Illegal;
+                    match->type = TokenType::Illegal;
                     return;
                 }
 
-                token->value += readChar();
+                match->value += readChar();
                 c = peekChar(1);
             }
         }
     } else {
-        token->value += readChar();
+        match->value += readChar();
         c = peekChar(1);
 
         while (c >= 0 && c != '\n') {
-            token->value += readChar();
+            match->value += readChar();
             c = peekChar(1);
         }
 
-        token->type = TokenType::Comment;
+        match->type = TokenType::Comment;
     }
 }
 
 
 void
-Scanner::matchNumberLiteralToken(Token *token)
+Scanner::matchNumberLiteralToken(Token *match)
 {
     if (peekChar(1) == '0' && peekChar(2) == 'x') {
-        matchNumberLiteralToken16(token);
+        matchNumberLiteralToken16(match);
     } else {
-        matchNumberLiteralToken10(token);
+        matchNumberLiteralToken10(match);
     }
 }
 
 
 void
-Scanner::matchNumberLiteralToken10(Token *token)
+Scanner::matchNumberLiteralToken10(Token *match)
 {
     int c = peekChar(1);
 
     while (std::isdigit(c)) {
-        token->value += readChar();
+        match->value += readChar();
         c = peekChar(1);
     }
 
@@ -363,96 +369,96 @@ Scanner::matchNumberLiteralToken10(Token *token)
 
     if (c == '.') {
         floatingPointFlag = true;
-        token->value += readChar();
+        match->value += readChar();
         c = peekChar(1);
 
         while (std::isdigit(c)) {
-            token->value += readChar();
+            match->value += readChar();
             c = peekChar(1);
         }
     }
 
     if (c == 'E' || c == 'e') {
         floatingPointFlag = true;
-        token->value += readChar();
+        match->value += readChar();
         c = peekChar(1);
 
         if (c == '+' || c == '-') {
-            token->value += readChar();
+            match->value += readChar();
             c = peekChar(1);
         }
 
         if (!std::isdigit(c)) {
             if (c >= 0 && c != '\n') {
-                token->value += readChar();
+                match->value += readChar();
             }
 
-            token->type = TokenType::Illegal;
+            match->type = TokenType::Illegal;
             return;
         }
 
-        token->value += readChar();
+        match->value += readChar();
         c = peekChar(1);
 
         while (std::isdigit(c)) {
-            token->value += readChar();
+            match->value += readChar();
             c = peekChar(1);
         }
     }
 
     if (std::isalpha(c) || c == '_') {
-        token->value += readChar();
-        token->type = TokenType::Illegal;
+        match->value += readChar();
+        match->type = TokenType::Illegal;
         return;
     }
 
-    token->type = floatingPointFlag ? TokenType::FloatingPointLiteral : TokenType::IntegerLiteral;
+    match->type = floatingPointFlag ? TokenType::FloatingPointLiteral : TokenType::IntegerLiteral;
 }
 
 
 void
-Scanner::matchNumberLiteralToken16(Token *token)
+Scanner::matchNumberLiteralToken16(Token *match)
 {
-    token->value += readChar();
-    token->value += readChar();
+    match->value += readChar();
+    match->value += readChar();
     int c = peekChar(1);
 
     if (!std::isxdigit(c)) {
         if (c >= 0 && c != '\n') {
-            token->value += readChar();
+            match->value += readChar();
         }
 
-        token->type = TokenType::Illegal;
+        match->type = TokenType::Illegal;
         return;
     }
 
-    token->value += readChar();
+    match->value += readChar();
     c = peekChar(1);
 
     while (std::isxdigit(c)) {
-        token->value += readChar();
+        match->value += readChar();
         c = peekChar(1);
     }
 
     if (std::isalpha(c) || c == '_') {
-        token->value += readChar();
-        token->type = TokenType::Illegal;
+        match->value += readChar();
+        match->type = TokenType::Illegal;
         return;
     }
 
-    token->type = TokenType::IntegerLiteral;
+    match->type = TokenType::IntegerLiteral;
 }
 
 
 void
-Scanner::matchStringLiteralToken(Token *token)
+Scanner::matchStringLiteralToken(Token *match)
 {
-    token->value += readChar();
+    match->value += readChar();
     int c = peekChar(1);
 
     for (;;) {
         if (c == '\\') {
-            token->value += readChar();
+            match->value += readChar();
             c = peekChar(1);
             bool missFlag = false;
 
@@ -468,7 +474,7 @@ Scanner::matchStringLiteralToken(Token *token)
             case 'r':
             case 't':
             case 'v':
-                token->value += readChar();
+                match->value += readChar();
                 c = peekChar(1);
                 break;
 
@@ -480,15 +486,15 @@ Scanner::matchStringLiteralToken(Token *token)
             case '5':
             case '6':
             case '7':
-                token->value += readChar();
+                match->value += readChar();
                 c = peekChar(1);
 
                 if (isodigit(c)) {
-                    token->value += readChar();
+                    match->value += readChar();
                     c = peekChar(1);
 
                     if (isodigit(c)) {
-                        token->value += readChar();
+                        match->value += readChar();
                         c = peekChar(1);
                     }
                 }
@@ -496,7 +502,7 @@ Scanner::matchStringLiteralToken(Token *token)
                 break;
 
             case 'x':
-                token->value += readChar();
+                match->value += readChar();
                 c = peekChar(1);
 
                 if (!std::isxdigit(c)) {
@@ -504,11 +510,11 @@ Scanner::matchStringLiteralToken(Token *token)
                     break;
                 }
 
-                token->value += readChar();
+                match->value += readChar();
                 c = peekChar(1);
 
                 if (std::isxdigit(c)) {
-                    token->value += readChar();
+                    match->value += readChar();
                     c = peekChar(1);
                 }
 
@@ -520,24 +526,24 @@ Scanner::matchStringLiteralToken(Token *token)
 
             if (missFlag) {
                 if (c >= 0 && c != '\n') {
-                    token->value += readChar();
+                    match->value += readChar();
                 }
 
-                token->type = TokenType::Illegal;
+                match->type = TokenType::Illegal;
                 return;
             }
         } else {
             if (c == '\"') {
-                token->value += readChar();
-                token->type = TokenType::StringLiteral;
+                match->value += readChar();
+                match->type = TokenType::StringLiteral;
                 return;
             } else {
                 if (c < 0 || c == '\n') {
-                    token->type = TokenType::Illegal;
+                    match->type = TokenType::Illegal;
                     return;
                 }
 
-                token->value += readChar();
+                match->value += readChar();
                 c = peekChar(1);
             }
         }
@@ -546,19 +552,19 @@ Scanner::matchStringLiteralToken(Token *token)
 
 
 void
-Scanner::matchNameToken(Token *token)
+Scanner::matchNameToken(Token *match)
 {
-    token->value += readChar();
+    match->value += readChar();
     int c = peekChar(1);
 
     while (std::isalnum(c) || c == '_') {
-        token->value += readChar();
+        match->value += readChar();
         c = peekChar(1);
     }
 
     std::unordered_map<std::string, TokenType>::const_iterator it = KeywordToTokenType
-                                                                    .find(token->value);
-    token->type = it == KeywordToTokenType.end() ? TokenType::Identifier : it->second;
+                                                                    .find(match->value);
+    match->type = it == KeywordToTokenType.end() ? TokenType::Identifier : it->second;
 }
 
 

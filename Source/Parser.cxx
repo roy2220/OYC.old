@@ -1,10 +1,12 @@
 #include "Parser.h"
 
-#include <cstdlib>
 #include <cctype>
+#include <cstdlib>
 #include <iterator>
 
-#include "Expressions.h"
+#include "Expression.h"
+#include "Program.h"
+#include "Statement.h"
 #include "SyntaxError.h"
 
 
@@ -12,6 +14,7 @@ namespace OYC {
 
 namespace {
 
+void SetStatementPosition(Statement *, const Token &);
 void ExpectToken(const Token &, TokenType);
 std::string EvaluateStringLiteral(const std::string &);
 
@@ -64,21 +67,21 @@ Parser::readToken()
 
 
 void
-Parser::matchBody(std::vector<std::unique_ptr<Statement>> *body, TokenType bodyTerminator)
+Parser::matchStatements(TokenType terminator, std::vector<std::unique_ptr<Statement>> *match)
 {
-    if (bodyTerminator == TokenType::No) {
+    if (terminator == TokenType::No) {
         std::unique_ptr<Statement> statement = matchStatement();
 
         if (statement != nullptr) {
-            body->push_back(std::move(statement));
+            match->push_back(std::move(statement));
         }
     } else {
-        for (const Token *token = &peekToken(1); token->type != bodyTerminator
+        for (const Token *token = &peekToken(1); token->type != terminator
              ; token = &peekToken(1)) {
             std::unique_ptr<Statement> statement = matchStatement();
 
             if (statement != nullptr) {
-                body->push_back(std::move(statement));
+                match->push_back(std::move(statement));
             }
         }
 
@@ -134,16 +137,30 @@ Parser::matchStatement()
 
 
 std::unique_ptr<Statement>
+Parser::matchExpressionStatement()
+{
+    auto match = std::make_unique<ExpressionStatement>();
+    SetStatementPosition(match.get(), peekToken(1));
+    match->expression = matchExpression1();
+    ExpectToken(peekToken(1), MakeTokenType(';'));
+    readToken();
+    return match;
+}
+
+
+std::unique_ptr<Statement>
 Parser::matchAutoStatement()
 {
     auto match = std::make_unique<AutoStatement>();
-    SetStatementPosition(match, readToken());
-    match->variableDeclarators.push(matchVariableDeclarator());
+    SetStatementPosition(match.get(), readToken());
+    match->variableDeclarators.emplace_back();
+    matchVariableDeclarator(&match->variableDeclarators.back());
     const Token *token = &peekToken(1);
 
     while (token->type == MakeTokenType(',')) {
         readToken();
-        match->variableDeclarators.push(matchVariableDeclarator());
+        match->variableDeclarators.emplace_back();
+        matchVariableDeclarator(&match->variableDeclarators.back());
         token = &peekToken(1);
     }
 
@@ -157,7 +174,7 @@ std::unique_ptr<Statement>
 Parser::matchBreakStatement()
 {
     auto match = std::make_unique<BreakStatement>();
-    SetStatementPosition(match, readToken());
+    SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType(';'));
     readToken();
     return match;
@@ -168,7 +185,7 @@ std::unique_ptr<Statement>
 Parser::matchContinueStatement()
 {
     auto match = std::make_unique<BreakStatement>();
-    SetStatementPosition(match, readToken());
+    SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType(';'));
     readToken();
     return match;
@@ -179,11 +196,11 @@ std::unique_ptr<Statement>
 Parser::matchReturnStatement()
 {
     auto match = std::make_unique<ReturnStatement>();
-    SetStatementPosition(match, readToken());
+    SetStatementPosition(match.get(), readToken());
     const Token *token = &peekToken(1);
 
     if (token->type != MakeTokenType(';')) {
-        match->result = matchExpression();
+        match->result = matchExpression1();
         ExpectToken(peekToken(1), MakeTokenType(';'));
     }
 
@@ -193,34 +210,22 @@ Parser::matchReturnStatement()
 
 
 std::unique_ptr<Statement>
-Parser::matchExpressionStatement()
-{
-    auto match = std::make_unique<ReturnStatement>();
-    SetStatementPosition(match, peekToken(1));
-    match->expression = matchExpression();
-    ExpectToken(peekToken(1), MakeTokenType(';'));
-    readToken();
-    return match;
-}
-
-
-std::unique_ptr<Statement>
 Parser::matchIfStatement()
 {
     auto match = std::make_unique<IfStatement>();
-    SetStatementPosition(match, readToken());
+    SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType('('));
     readToken();
-    match->condition = matchExpression();
+    match->condition = matchExpression1();
     ExpectToken(peekToken(1), MakeTokenType(')'));
     readToken();
     const Token *token = &peekToken(1);
 
     if (token->type == MakeTokenType('{')) {
         readToken();
-        matchBody(&match->thenBody, MakeTokenType('}'));
+        matchStatements(MakeTokenType('}'), &match->thenBody);
     } else {
-        matchBody(&match->thenBody, TokenType::No);
+        matchStatements(TokenType::No, &match->thenBody);
     }
 
     token = &peekToken(1);
@@ -231,9 +236,9 @@ Parser::matchIfStatement()
 
         if (token->type == MakeTokenType('{')) {
             readToken();
-            matchBody(&match->elseBody, MakeTokenType('}'));
+            matchStatements(MakeTokenType('}'), &match->elseBody);
         } else {
-            matchBody(&match->elseBody, TokenType::No);
+            matchStatements(TokenType::No, &match->elseBody);
         }
     }
 
@@ -251,19 +256,19 @@ std::unique_ptr<Statement>
 Parser::matchWhileStatement()
 {
     auto match = std::make_unique<WhileStatement>();
-    SetStatementPosition(match, readToken());
+    SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType('('));
     readToken();
-    match->condition = matchExpression();
+    match->condition = matchExpression1();
     ExpectToken(peekToken(1), MakeTokenType(')'));
     readToken();
     const Token *token = &peekToken(1);
 
     if (token->type == MakeTokenType('{')) {
         readToken();
-        matchBody(&match->body, MakeTokenType('}'));
+        matchStatements(MakeTokenType('}'), &match->body);
     } else {
-        matchBody(&match->body, TokenType::No);
+        matchStatements(TokenType::No, &match->body);
     }
 
     return match;
@@ -279,16 +284,16 @@ Parser::matchDoWhileStatement()
 
     if (token->type == MakeTokenType('{')) {
         readToken();
-        matchBody(&match->body, MakeTokenType('}'));
+        matchStatements(MakeTokenType('}'), &match->body);
     } else {
-        matchBody(&match->body, TokenType::No);
+        matchStatements(TokenType::No, &match->body);
     }
 
     ExpectToken(peekToken(1), TokenType::WhileKeyword);
-    SetStatementPosition(match, readToken());
+    SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType('('));
     readToken();
-    match->condition = matchExpression();
+    match->condition = matchExpression1();
     ExpectToken(peekToken(1), MakeTokenType(')'));
     readToken();
     ExpectToken(peekToken(1), MakeTokenType(';'));
@@ -301,7 +306,7 @@ std::unique_ptr<Statement>
 Parser::matchForStatement()
 {
     auto match = std::make_unique<ForStatement>();
-    SetStatementPosition(match, readToken());
+    SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType('('));
     readToken();
     const Token *token = &peekToken(1);
@@ -316,7 +321,7 @@ Parser::matchForStatement()
     token = &peekToken(1);
 
     if (token->type != MakeTokenType(';')) {
-        match->condition = matchExpression();
+        match->condition = matchExpression1();
         ExpectToken(peekToken(1), MakeTokenType(';'));
     }
 
@@ -324,7 +329,7 @@ Parser::matchForStatement()
     token = &peekToken(1);
 
     if (token->type != MakeTokenType(')')) {
-        match->iteration = matchExpression();
+        match->iteration = matchExpression1();
         ExpectToken(peekToken(1), MakeTokenType(')'));
     }
 
@@ -333,9 +338,9 @@ Parser::matchForStatement()
 
     if (token->type == MakeTokenType('{')) {
         readToken();
-        matchBody(&match->body, MakeTokenType('}'));
+        matchStatements(MakeTokenType('}'), &match->body);
     } else {
-        matchBody(&match->body, TokenType::No);
+        matchStatements(TokenType::No, &match->body);
     }
 
     return match;
@@ -346,7 +351,7 @@ std::unique_ptr<Statement>
 Parser::matchForeachStatement()
 {
     auto match = std::make_unique<ForeachStatement>();
-    SetStatementPosition(match, readToken());
+    SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType('('));
     readToken();
     ExpectToken(peekToken(1), TokenType::AutoKeyword);
@@ -366,12 +371,26 @@ Parser::matchForeachStatement()
 
     if (token->type == MakeTokenType('{')) {
         readToken();
-        matchBody(&match->body, MakeTokenType('}'));
+        matchStatements(MakeTokenType('}'), &match->body);
     } else {
-        matchBody(&match->body, TokenType::No);
+        matchStatements(TokenType::No, &match->body);
     }
 
     return match;
+}
+
+
+void
+Parser::matchVariableDeclarator(VariableDeclarator *match)
+{
+    ExpectToken(peekToken(1), TokenType::Identifier);
+    match->name = getIdentifier();
+    const Token *token = &peekToken(1);
+
+    if (token->type == MakeTokenType('=')) {
+        readToken();
+        match->initializer = matchExpression2();
+    }
 }
 
 
@@ -841,6 +860,14 @@ Parser::matchFunctionLiteral()
 
 
 namespace {
+
+void
+SetStatementPosition(Statement *statement, const Token &token)
+{
+    statement->lineNumber = token.lineNumber;
+    statement->columnNumber = token.columnNumber;
+}
+
 
 void
 ExpectToken(const Token &token, TokenType tokenType)

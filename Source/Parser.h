@@ -2,10 +2,11 @@
 
 
 #include <functional>
-#include <memory>
 #include <list>
+#include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "Token.h"
 
@@ -14,12 +15,12 @@ namespace OYC {
 
 struct Program;
 struct ProgramData;
+struct Statement;
+struct VariableDeclarator;
 struct Expression;
 struct ArrayLiteral;
 struct DictionaryLiteral;
 struct FunctionLiteral;
-struct ArrayInitializer;
-struct DictionaryInitializer;
 
 
 class Parser final
@@ -32,10 +33,11 @@ public:
     inline explicit Parser(std::function<Token ()> &&);
 
     Program readProgram();
+    std::unique_ptr<Expression> matchExpression() {
+        return matchExpression1();
+    }
 
 private:
-    inline std::unique_ptr<Expression> matchExpression();
-
     std::function<Token ()> tokenReader_;
     std::list<Token> prereadTokens_;
 
@@ -45,20 +47,22 @@ private:
     const Token &peekToken(int);
     Token readToken();
 
-    void matchBody(std::vector<std::unique_ptr<Statement>> *, TokenType);
+    void matchStatements(TokenType, std::vector<std::unique_ptr<Statement>> *);
 
     std::unique_ptr<Statement> matchStatement();
+    std::unique_ptr<Statement> matchExpressionStatement();
     std::unique_ptr<Statement> matchAutoStatement();
     std::unique_ptr<Statement> matchBreakStatement();
     std::unique_ptr<Statement> matchContinueStatement();
     std::unique_ptr<Statement> matchReturnStatement();
-    std::unique_ptr<Statement> matchExpressionStatement();
     std::unique_ptr<Statement> matchIfStatement();
     std::unique_ptr<Statement> matchSwitchStatement();
     std::unique_ptr<Statement> matchWhileStatement();
     std::unique_ptr<Statement> matchDoWhileStatement();
     std::unique_ptr<Statement> matchForStatement();
     std::unique_ptr<Statement> matchForeachStatement();
+
+    void matchVariableDeclarator(VariableDeclarator *);
 
     std::unique_ptr<Expression> matchExpression1();
     std::unique_ptr<Expression> matchExpression2();
@@ -89,13 +93,6 @@ Parser::Parser(const std::function<Token ()> &tokenReader)
 Parser::Parser(std::function<Token ()> &&tokenReader)
     : tokenReader_(std::move(tokenReader))
 {
-}
-
-
-std::unique_ptr<Expression>
-Parser::matchExpression()
-{
-    return matchExpression1();
 }
 
 } // namespace OYC

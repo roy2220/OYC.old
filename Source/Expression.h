@@ -3,17 +3,31 @@
 
 #include <cstdint>
 #include <memory>
-#include <vector>
-#include <utility>
 #include <string>
+#include <utility>
+#include <vector>
 
-#include "ExpressionVisitor.h"
 #include "Token.h"
 
 
 namespace OYC {
 
-enum class PrimaryExpressionType: std::uint8_t
+struct ArrayLiteral;
+struct DictionaryLiteral;
+struct FunctionLiteral;
+
+class ExpressionVisitor;
+
+
+struct Expression
+{
+    virtual ~Expression() = default;
+
+    virtual void acceptVisit(ExpressionVisitor *) const = 0;
+};
+
+
+enum class PrimaryExpressionType : std::uint8_t
 {
     No = 0,
     Nil,
@@ -28,25 +42,7 @@ enum class PrimaryExpressionType: std::uint8_t
 };
 
 
-struct ArrayLiteral
-{
-    std::vector<std::unique_ptr<Expression>> elements;
-};
-
-
-struct DictionaryLiteral
-{
-    std::vector<std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>>> elements;
-};
-
-
-struct FunctionLiteral
-{
-    std::vector<const std::string *> parameters;
-};
-
-
-struct PrimaryExpression: Expression
+struct PrimaryExpression : Expression
 {
     PrimaryExpressionType type = PrimaryExpressionType::No;
 
@@ -61,11 +57,11 @@ struct PrimaryExpression: Expression
         const FunctionLiteral *functionLiteral;
     };
 
-    OYC_EXPRESSION_VISIT_ACCEPTOR(PrimaryExpression)
+    void acceptVisit(ExpressionVisitor *) const override;
 };
 
 
-enum class UnaryExpressionType: std::uint8_t
+enum class UnaryExpressionType : std::uint8_t
 {
     No = 0,
     Prefix,
@@ -73,52 +69,52 @@ enum class UnaryExpressionType: std::uint8_t
 };
 
 
-struct UnaryExpression: Expression
+struct UnaryExpression : Expression
 {
     UnaryExpressionType type = UnaryExpressionType::No;
     TokenType op = TokenType::No;
     std::unique_ptr<Expression> operand;
 
-    OYC_EXPRESSION_VISIT_ACCEPTOR(UnaryExpression)
+    void acceptVisit(ExpressionVisitor *) const override;
 };
 
 
-struct BinaryExpression: Expression
+struct BinaryExpression : Expression
 {
     TokenType op = TokenType::No;
     std::unique_ptr<Expression> operand1;
     std::unique_ptr<Expression> operand2;
 
-    OYC_EXPRESSION_VISIT_ACCEPTOR(BinaryExpression)
+    void acceptVisit(ExpressionVisitor *) const override;
 };
 
 
-struct TernaryExpression: Expression
+struct TernaryExpression : Expression
 {
     TokenType op[2] = {TokenType::No, TokenType::No};
     std::unique_ptr<Expression> operand1;
     std::unique_ptr<Expression> operand2;
     std::unique_ptr<Expression> operand3;
 
-    OYC_EXPRESSION_VISIT_ACCEPTOR(TernaryExpression)
+    void acceptVisit(ExpressionVisitor *) const override;
 };
 
 
-struct RetrievalExpression: Expression
+struct RetrievalExpression : Expression
 {
     std::unique_ptr<Expression> retrievee;
     std::unique_ptr<Expression> key;
 
-    OYC_EXPRESSION_VISIT_ACCEPTOR(RetrievalExpression)
+    void acceptVisit(ExpressionVisitor *) const override;
 };
 
 
-struct InvocationExpression: Expression
+struct InvocationExpression : Expression
 {
     std::unique_ptr<Expression> invokee;
     std::vector<std::unique_ptr<Expression>> arguments;
 
-    OYC_EXPRESSION_VISIT_ACCEPTOR(InvocationExpression)
+    void acceptVisit(ExpressionVisitor *) const override;
 };
 
 } // namespace OYC
