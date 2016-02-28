@@ -33,9 +33,6 @@ public:
     inline explicit Parser(std::function<Token ()> &&);
 
     Program readProgram();
-    std::unique_ptr<Expression> matchExpression() {
-        return matchExpression1();
-    }
 
 private:
     std::function<Token ()> tokenReader_;
@@ -47,6 +44,7 @@ private:
     const Token &peekToken(int);
     Token readToken();
 
+    void matchProgram(Program *);
     void matchStatements(TokenType, std::vector<std::unique_ptr<Statement>> *);
 
     std::unique_ptr<Statement> matchStatement();

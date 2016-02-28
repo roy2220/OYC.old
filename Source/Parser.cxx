@@ -25,6 +25,15 @@ int xdigit2int(char);
 } // namespace
 
 
+Program
+Parser::readProgram()
+{
+    Program program;
+    matchProgram(&program);
+    return program;
+}
+
+
 Token
 Parser::doReadToken()
 {
@@ -63,6 +72,15 @@ Parser::readToken()
         prereadTokens_.pop_front();
         return token;
     }
+}
+
+
+void
+Parser::matchProgram(Program *match)
+{
+    programData_ = &match->data;
+    matchStatements(TokenType::EndOfFile, &match->body);
+    programData_ = nullptr;
 }
 
 
@@ -856,6 +874,32 @@ Parser::matchDictionaryLiteral()
 const FunctionLiteral *
 Parser::matchFunctionLiteral()
 {
+    programData_->functionLiterals.emplace_back();
+    FunctionLiteral *match = &programData_->functionLiterals.back();
+    readToken();
+    ExpectToken(peekToken(1), MakeTokenType('('));
+    readToken();
+    const Token *token = &peekToken(1);
+
+    if (token->type != MakeTokenType(')')) {
+        ExpectToken(*token, TokenType::Identifier);
+        match->parameters.push_back(getIdentifier());
+        token = &peekToken(1);
+
+        while (token->type == MakeTokenType(',')) {
+            readToken();
+            ExpectToken(peekToken(1), TokenType::Identifier);
+            match->parameters.push_back(getIdentifier());
+            token = &peekToken(1);
+        }
+
+        ExpectToken(*token, MakeTokenType(')'));
+    }
+
+    readToken();
+    ExpectToken(peekToken(1), MakeTokenType('{'));
+    readToken();
+    matchStatements(MakeTokenType('}'), &match->body);
 }
 
 
