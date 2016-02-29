@@ -9,6 +9,7 @@ struct BreakStatement;
 struct ContinueStatement;
 struct ReturnStatement;
 struct IfStatement;
+struct SwitchStatement;
 struct WhileStatement;
 struct DoWhileStatement;
 struct ForStatement;
@@ -27,6 +28,7 @@ public:
     virtual void visitContinueStatement(const ContinueStatement &) = 0;
     virtual void visitReturnStatement(const ReturnStatement &) = 0;
     virtual void visitIfStatement(const IfStatement &) = 0;
+    virtual void visitSwitchStatement(const SwitchStatement &) = 0;
     virtual void visitWhileStatement(const WhileStatement &) = 0;
     virtual void visitDoWhileStatement(const DoWhileStatement &) = 0;
     virtual void visitForStatement(const ForStatement &) = 0;

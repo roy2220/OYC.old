@@ -1,6 +1,7 @@
 #pragma once
 
 
+#include <list>
 #include <memory>
 #include <string>
 #include <vector>
@@ -41,7 +42,7 @@ struct VariableDeclarator
 
 struct AutoStatement : Statement
 {
-    std::vector<VariableDeclarator> variableDeclarators;
+    std::list<VariableDeclarator> variableDeclarators;
 
     void acceptVisit(StatementVisitor *) const override;
 };
@@ -72,6 +73,22 @@ struct IfStatement : Statement
     std::unique_ptr<Expression> condition;
     std::vector<std::unique_ptr<Statement>> thenBody;
     std::vector<std::unique_ptr<Statement>> elseBody;
+
+    void acceptVisit(StatementVisitor *) const override;
+};
+
+
+struct CaseClause
+{
+    std::unique_ptr<Expression> rhs;
+    std::vector<std::unique_ptr<Statement>> body;
+};
+
+
+struct SwitchStatement : Statement
+{
+    std::unique_ptr<Expression> lhs;
+    std::list<CaseClause> caseClauses;
 
     void acceptVisit(StatementVisitor *) const override;
 };

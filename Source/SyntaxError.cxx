@@ -55,6 +55,13 @@ SyntaxError::UnexpectedToken(const Token &token, const std::string &something)
 }
 
 
+SyntaxError
+SyntaxError::DuplicateDefaultLabel(const Token &token)
+{
+    return SyntaxError(token.lineNumber, token.columnNumber, "duplicate default label");
+}
+
+
 SyntaxError::SyntaxError(int lineNumber, int columnNumber, const std::string &description)
 {
     message_ += std::to_string(lineNumber);

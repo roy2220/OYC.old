@@ -23,6 +23,7 @@ public:
     static SyntaxError IllegalToken(const Token &);
     static SyntaxError UnexpectedToken(const Token &, TokenType, TokenType = TokenType::No);
     static SyntaxError UnexpectedToken(const Token &, const std::string &);
+    static SyntaxError DuplicateDefaultLabel(const Token &);
 
 private:
     std::string message_;

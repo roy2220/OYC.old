@@ -17,6 +17,7 @@ struct Program;
 struct ProgramData;
 struct Statement;
 struct VariableDeclarator;
+struct CaseClause;
 struct Expression;
 struct ArrayLiteral;
 struct DictionaryLiteral;
@@ -61,6 +62,7 @@ private:
     std::unique_ptr<Statement> matchForeachStatement();
 
     void matchVariableDeclarator(VariableDeclarator *);
+    void matchCaseClause(CaseClause *);
 
     std::unique_ptr<Expression> matchExpression1();
     std::unique_ptr<Expression> matchExpression2();

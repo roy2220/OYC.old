@@ -270,6 +270,41 @@ Parser::matchIfStatement()
 std::unique_ptr<Statement>
 Parser::matchSwitchStatement()
 {
+    auto match = std::make_unique<SwitchStatement>();
+    SetStatementPosition(match.get(), readToken());
+    ExpectToken(peekToken(1), MakeTokenType('('));
+    readToken();
+    match->lhs = matchExpression1();
+    ExpectToken(peekToken(1), MakeTokenType(')'));
+    readToken();
+    ExpectToken(peekToken(1), MakeTokenType('{'));
+    readToken();
+    const Token *token = &peekToken(1);
+
+    if (token->type != MakeTokenType('}')) {
+        ExpectToken(*token, TokenType::CaseKeyword, TokenType::DefaultKeyword);
+        bool defaultLabelFlag = token->type == TokenType::DefaultKeyword;
+
+        for (;;) {
+            match->caseClauses.emplace_back();
+            matchCaseClause(&match->caseClauses.back());
+            token = &peekToken(1);
+
+            if (token->type == MakeTokenType('}')) {
+                break;
+            } else {
+                if (token->type == TokenType::DefaultKeyword) {
+                    if (defaultLabelFlag) {
+                        throw SyntaxError::DuplicateDefaultLabel(*token);
+                    }
+
+                    defaultLabelFlag = true;
+                }
+            }
+        }
+    }
+
+    readToken();
 }
 
 
@@ -411,6 +446,35 @@ Parser::matchVariableDeclarator(VariableDeclarator *match)
     if (token->type == MakeTokenType('=')) {
         readToken();
         match->initializer = matchExpression2();
+    }
+}
+
+
+void
+Parser::matchCaseClause(CaseClause *match)
+{
+    const Token *token = &peekToken(1);
+
+    if (token->type == TokenType::CaseKeyword) {
+        readToken();
+        match->rhs = matchExpression1();
+    } else {
+        readToken();
+    }
+
+    ExpectToken(peekToken(1), MakeTokenType(':'));
+    readToken();
+    token = &peekToken(1);
+
+    while (token->type != TokenType::CaseKeyword && token->type != TokenType::DefaultKeyword
+           && token->type != MakeTokenType('}')) {
+        std::unique_ptr<Statement> statement = matchStatement();
+
+        if (statement != nullptr) {
+            match->body.push_back(std::move(statement));
+        }
+
+        token = &peekToken(1);
     }
 }
 
@@ -656,6 +720,7 @@ Parser::matchExpression6()
     case TokenType::NullKeyword: {
             auto match = std::make_unique<PrimaryExpression>();
             match->type = PrimaryExpressionType::Null;
+            readToken();
             return match;
         }
 
