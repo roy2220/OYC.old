@@ -68,7 +68,7 @@ private:
     std::unique_ptr<Expression> matchExpression4();
     std::unique_ptr<Expression> matchExpression5();
     std::unique_ptr<Expression> matchExpression6();
-    std::unique_ptr<Expression> matchExpression7();
+    std::unique_ptr<Expression> matchElementSelector();
 
     bool getBoolean();
     unsigned long getInteger();
