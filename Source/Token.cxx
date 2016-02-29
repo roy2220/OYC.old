@@ -7,13 +7,14 @@ namespace {
 
 const char *PredefinedTokenTypeToString[] = {
     nullptr,
-    "End-of-file",
-    "White Space",
-    "Comment",
-    "Integer Literal",
-    "Floating-point Literal",
-    "String Literal",
-    "Identifier",
+    "end-of-file",
+    "white space",
+    "comment",
+    "integer literal",
+    "floating-point literal",
+    "string literal",
+    "identifier",
+    "illegal",
     "null",
     "false",
     "true",
@@ -32,8 +33,7 @@ const char *PredefinedTokenTypeToString[] = {
     "do",
     "for",
     "foreach",
-    "sizeof",
-    "Illegal"
+    "sizeof"
 };
 
 } // namespace

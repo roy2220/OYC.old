@@ -21,8 +21,8 @@ public:
     inline const char *what() const noexcept override;
 
     static SyntaxError IllegalToken(const Token &);
-    static SyntaxError UnexpectedToken(const Token &, TokenType = TokenType::No
-                                       , TokenType = TokenType::No);
+    static SyntaxError UnexpectedToken(const Token &, TokenType, TokenType = TokenType::No);
+    static SyntaxError UnexpectedToken(const Token &, const std::string &);
 
 private:
     std::string message_;

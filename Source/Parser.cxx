@@ -717,7 +717,7 @@ Parser::matchExpression6()
         }
 
     default:
-        throw SyntaxError::UnexpectedToken(*token);
+        throw SyntaxError::UnexpectedToken(*token, "primary-expression");
     }
 }
 
