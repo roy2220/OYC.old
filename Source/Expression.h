@@ -30,7 +30,7 @@ struct Expression
 enum class PrimaryExpressionType : std::uint8_t
 {
     No = 0,
-    Nil,
+    Null,
     Boolean,
     Integer,
     FloatingPoint,

@@ -164,7 +164,14 @@ Scanner::matchToken(Token *match)
             matchNumberLiteralToken(match);
         } else {
             match->value += readChar();
-            match->type = MakeTokenType(c1);
+
+            if (c2 == '.' && (c3 = peekChar(2)) == '.') {
+                match->value += readChar();
+                match->value += readChar();
+                match->type = MakeTokenType(c1, c2, c3);
+            } else {
+                match->type = MakeTokenType(c1);
+            }
         }
 
         break;
@@ -174,13 +181,15 @@ Scanner::matchToken(Token *match)
 
         if (c2 == '*' || c2 == '/') {
             matchCommentToken(match);
-        } else if (c2 == '=') {
-            match->value += readChar();
-            match->value += readChar();
-            match->type = MakeTokenType(c1, c2);
         } else {
             match->value += readChar();
-            match->type = MakeTokenType(c1);
+
+            if (c2 == '=') {
+                match->value += readChar();
+                match->type = MakeTokenType(c1, c2);
+            } else {
+                match->type = MakeTokenType(c1);
+            }
         }
 
         break;

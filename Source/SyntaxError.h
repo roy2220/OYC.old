@@ -5,13 +5,10 @@
 #include <string>
 #include <utility>
 
+#include "Token.h"
+
 
 namespace OYC {
-
-enum class TokenType: std::uint32_t;
-
-struct Token;
-
 
 class SyntaxError final: public std::exception
 {
@@ -24,7 +21,8 @@ public:
     inline const char *what() const noexcept override;
 
     static SyntaxError IllegalToken(const Token &);
-    static SyntaxError UnexpectedToken(const Token &, TokenType);
+    static SyntaxError UnexpectedToken(const Token &, TokenType = TokenType::No
+                                       , TokenType = TokenType::No);
 
 private:
     std::string message_;

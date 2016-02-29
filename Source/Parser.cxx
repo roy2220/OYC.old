@@ -16,6 +16,7 @@ namespace {
 
 void SetStatementPosition(Statement *, const Token &);
 void ExpectToken(const Token &, TokenType);
+void ExpectToken(const Token &, TokenType, TokenType);
 std::string EvaluateStringLiteral(const std::string &);
 
 bool isodigit(int);
@@ -328,12 +329,12 @@ Parser::matchForStatement()
     ExpectToken(peekToken(1), MakeTokenType('('));
     readToken();
     const Token *token = &peekToken(1);
+    ExpectToken(*token, TokenType::AutoKeyword, MakeTokenType(';'));
 
-    if (token->type == MakeTokenType(';')) {
-        readToken();
-    } else {
-        ExpectToken(*token, TokenType::AutoKeyword);
+    if (token->type == TokenType::AutoKeyword) {
         match->initialization = matchAutoStatement();
+    } else {
+        readToken();
     }
 
     token = &peekToken(1);
@@ -559,7 +560,8 @@ Parser::matchExpression4()
     case MakeTokenType('+'):
     case MakeTokenType('-'):
     case MakeTokenType('!'):
-    case MakeTokenType('~'): {
+    case MakeTokenType('~'):
+    case TokenType::SizeofKeyword: {
             auto match = std::make_unique<UnaryExpression>();
             match->type = UnaryExpressionType::Prefix;
             match->op = readToken().type;
@@ -659,9 +661,9 @@ Parser::matchExpression6()
             return result;
         }
 
-    case TokenType::NilKeyword: {
+    case TokenType::NullKeyword: {
             auto match = std::make_unique<PrimaryExpression>();
-            match->type = PrimaryExpressionType::Nil;
+            match->type = PrimaryExpressionType::Null;
             return match;
         }
 
@@ -723,7 +725,7 @@ Parser::matchExpression6()
         }
 
     default:
-        ExpectToken(*token, TokenType::No);
+        throw SyntaxError::UnexpectedToken(*token);
     }
 }
 
@@ -812,10 +814,9 @@ Parser::matchArrayLiteral()
                 break;
             }
         }
-
-        readToken();
     }
 
+    readToken();
     return match;
 }
 
@@ -832,12 +833,14 @@ Parser::matchDictionaryLiteral()
 
     if (token->type != MakeTokenType('}')) {
         for (;;) {
+            ExpectToken(*token, MakeTokenType('.'), MakeTokenType('['));
+
             if (token->type == MakeTokenType('.')) {
                 std::unique_ptr<Expression> first = matchExpression7();
                 ExpectToken(peekToken(1), MakeTokenType('='));
                 readToken();
                 match->elements.emplace_back(std::move(first), matchExpression2());
-            } if (token->type == MakeTokenType('[')) {
+            } else {
                 readToken();
                 std::unique_ptr<Expression> first = matchExpression1();
                 ExpectToken(peekToken(1), MakeTokenType(']'));
@@ -845,8 +848,6 @@ Parser::matchDictionaryLiteral()
                 ExpectToken(peekToken(1), MakeTokenType('='));
                 readToken();
                 match->elements.emplace_back(std::move(first), matchExpression2());
-            } else {
-                ExpectToken(*token, TokenType::No);
             }
 
             token = &peekToken(1);
@@ -863,10 +864,9 @@ Parser::matchDictionaryLiteral()
                 break;
             }
         }
-
-        readToken();
     }
 
+    readToken();
     return match;
 }
 
@@ -882,18 +882,39 @@ Parser::matchFunctionLiteral()
     const Token *token = &peekToken(1);
 
     if (token->type != MakeTokenType(')')) {
-        ExpectToken(*token, TokenType::Identifier);
-        match->parameters.push_back(getIdentifier());
-        token = &peekToken(1);
+        bool variadicFlag = false;
+        ExpectToken(*token, TokenType::AutoKeyword, MakeTokenType('.', '.', '.'));
 
-        while (token->type == MakeTokenType(',')) {
+        if (token->type == TokenType::AutoKeyword) {
             readToken();
             ExpectToken(peekToken(1), TokenType::Identifier);
             match->parameters.push_back(getIdentifier());
+        } else {
+            variadicFlag = true;
+            readToken();
+        }
+
+        token = &peekToken(1);
+
+        while (!variadicFlag && token->type == MakeTokenType(',')) {
+            readToken();
+            token = &peekToken(1);
+            ExpectToken(*token, TokenType::AutoKeyword, MakeTokenType('.', '.', '.'));
+
+            if (token->type == TokenType::AutoKeyword) {
+                readToken();
+                ExpectToken(peekToken(1), TokenType::Identifier);
+                match->parameters.push_back(getIdentifier());
+            } else {
+                variadicFlag = true;
+                readToken();
+            }
+
             token = &peekToken(1);
         }
 
         ExpectToken(*token, MakeTokenType(')'));
+        match->isVariadic = variadicFlag;
     }
 
     readToken();
@@ -918,6 +939,15 @@ ExpectToken(const Token &token, TokenType tokenType)
 {
     if (token.type != tokenType) {
         throw SyntaxError::UnexpectedToken(token, tokenType);
+    }
+}
+
+
+void
+ExpectToken(const Token &token, TokenType tokenType1, TokenType tokenType2)
+{
+    if (token.type != tokenType1 && token.type != tokenType2) {
+        throw SyntaxError::UnexpectedToken(token, tokenType1, tokenType2);
     }
 }
 

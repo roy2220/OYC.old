@@ -30,6 +30,7 @@ struct DictionaryLiteral
 struct FunctionLiteral
 {
     std::vector<const std::string *> parameters;
+    bool isVariadic = false;
     std::vector<std::unique_ptr<Statement>> body;
 };
 

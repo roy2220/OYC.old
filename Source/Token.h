@@ -18,7 +18,7 @@ enum class TokenType: std::uint32_t
     StringLiteral,
     Identifier,
     KeywordBegin,
-    NilKeyword = KeywordBegin,
+    NullKeyword = KeywordBegin,
     FalseKeyword,
     TrueKeyword,
     DictKeyword,
@@ -36,6 +36,7 @@ enum class TokenType: std::uint32_t
     DoKeyword,
     ForKeyword,
     ForeachKeyword,
+    SizeofKeyword,
     KeywordEnd,
     Illegal = KeywordEnd
 };

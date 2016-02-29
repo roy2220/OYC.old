@@ -14,7 +14,7 @@ const char *PredefinedTokenTypeToString[] = {
     "Floating-point Literal",
     "String Literal",
     "Identifier",
-    "nil",
+    "null",
     "false",
     "true",
     "dict",
@@ -32,6 +32,7 @@ const char *PredefinedTokenTypeToString[] = {
     "do",
     "for",
     "foreach",
+    "sizeof",
     "Illegal"
 };
 
