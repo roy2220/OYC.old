@@ -305,6 +305,7 @@ Parser::matchSwitchStatement()
     }
 
     readToken();
+    return match;
 }
 
 
@@ -678,7 +679,7 @@ Parser::matchExpression5()
 
                 if (token->type != MakeTokenType(')')) {
                     for (;;) {
-                        match->arguments.push_back(matchExpression2());
+                        match->arguments.push_back(matchArrayElement());
                         token = &peekToken(1);
                         ExpectToken(*token, MakeTokenType(','), MakeTokenType(')'));
 
@@ -781,6 +782,13 @@ Parser::matchExpression6()
             return match;
         }
 
+    case TokenType::ThisKeyword: {
+            auto match = std::make_unique<PrimaryExpression>();
+            match->type = PrimaryExpressionType::This;
+            readToken();
+            return match;
+        }
+
     default:
         throw SyntaxError::UnexpectedToken(*token, "primary-expression");
     }
@@ -866,7 +874,7 @@ Parser::matchArrayLiteral()
 
     if (token->type != MakeTokenType('}')) {
         for (;;) {
-            match->elements.push_back(matchExpression2());
+            match->elements.push_back(matchArrayElement());
             token = &peekToken(1);
             ExpectToken(*token, MakeTokenType(','), MakeTokenType('}'));
 
@@ -900,11 +908,7 @@ Parser::matchDictionaryLiteral()
 
     if (token->type != MakeTokenType('}')) {
         for (;;) {
-            ExpectToken(*token, MakeTokenType('.'), MakeTokenType('['));
-            std::unique_ptr<Expression> key = matchElementSelector();
-            ExpectToken(peekToken(1), MakeTokenType('='));
-            readToken();
-            match->elements.emplace_back(std::move(key), matchExpression2());
+            match->elements.push_back(matchDictionaryElement());
             token = &peekToken(1);
             ExpectToken(*token, MakeTokenType(','), MakeTokenType('}'));
 
@@ -966,6 +970,33 @@ Parser::matchFunctionLiteral()
     ExpectToken(peekToken(1), MakeTokenType('{'));
     readToken();
     matchStatements(MakeTokenType('}'), &match->body);
+}
+
+
+std::unique_ptr<Expression>
+Parser::matchArrayElement()
+{
+    const Token *token = &peekToken(1);
+
+    if (token->type == MakeTokenType('.', '.', '.')) {
+        auto match = std::make_unique<PrimaryExpression>();
+        match->type = PrimaryExpressionType::Varargs;
+        readToken();
+        return match;
+    } else {
+        return matchExpression2();
+    }
+}
+
+
+std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>>
+Parser::matchDictionaryElement()
+{
+    ExpectToken(peekToken(1), MakeTokenType('.'), MakeTokenType('['));
+    std::unique_ptr<Expression> key = matchElementSelector();
+    ExpectToken(peekToken(1), MakeTokenType('='));
+    readToken();
+    return std::make_pair(std::move(key), matchExpression2());
 }
 
 

@@ -38,7 +38,9 @@ enum class PrimaryExpressionType : std::uint8_t
     Identifier,
     ArrayLiteral,
     DictionaryLiteral,
-    FunctionLiteral
+    FunctionLiteral,
+    This,
+    Varargs
 };
 
 

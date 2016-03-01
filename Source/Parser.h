@@ -81,6 +81,9 @@ private:
     const ArrayLiteral *matchArrayLiteral();
     const DictionaryLiteral *matchDictionaryLiteral();
     const FunctionLiteral *matchFunctionLiteral();
+
+    std::unique_ptr<Expression> matchArrayElement();
+    std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>> matchDictionaryElement();
 };
 
 

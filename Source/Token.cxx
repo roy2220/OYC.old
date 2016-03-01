@@ -33,7 +33,8 @@ const char *PredefinedTokenTypeToString[] = {
     "do",
     "for",
     "foreach",
-    "sizeof"
+    "sizeof",
+    "this"
 };
 
 } // namespace
