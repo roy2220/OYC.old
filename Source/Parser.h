@@ -30,13 +30,15 @@ class Parser final
     Parser &operator=(Parser &) = delete;
 
 public:
-    inline explicit Parser(const std::function<Token ()> &);
-    inline explicit Parser(std::function<Token ()> &&);
+    inline explicit Parser();
+
+    inline void setInput(const std::function<Token ()> &);
+    inline void setInput(std::function<Token ()> &&);
 
     Program readProgram();
 
 private:
-    std::function<Token ()> tokenReader_;
+    std::function<Token ()> input_;
     std::list<Token> prereadTokens_;
 
     ProgramData *programData_;
@@ -87,15 +89,23 @@ private:
 };
 
 
-Parser::Parser(const std::function<Token ()> &tokenReader)
-    : tokenReader_(tokenReader)
+Parser::Parser()
+    : input_([] () -> Token { return {TokenType::EndOfFile, {}, 1, 1}; }), programData_(nullptr)
 {
 }
 
 
-Parser::Parser(std::function<Token ()> &&tokenReader)
-    : tokenReader_(std::move(tokenReader))
+void
+Parser::setInput(const std::function<Token ()> &input)
 {
+    input_ = input;
+}
+
+
+void
+Parser::setInput(std::function<Token ()> &&input)
+{
+    input_ = std::move(input);
 }
 
 } // namespace OYC

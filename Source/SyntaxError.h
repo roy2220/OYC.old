@@ -10,7 +10,7 @@
 
 namespace OYC {
 
-class SyntaxError final: public std::exception
+class SyntaxError final : public std::exception
 {
     SyntaxError(const SyntaxError &) = delete;
     SyntaxError &operator=(SyntaxError &) = delete;
@@ -28,7 +28,7 @@ public:
 private:
     std::string message_;
 
-    SyntaxError(int, int, const std::string &);
+    explicit SyntaxError(int, int, const std::string &);
 };
 
 

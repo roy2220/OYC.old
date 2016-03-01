@@ -17,16 +17,18 @@ class Scanner final
     Scanner &operator=(Scanner &) = delete;
 
 public:
-    inline explicit Scanner(const std::function<int ()> &);
-    inline explicit Scanner(std::function<int ()> &&);
+    inline explicit Scanner();
+
+    inline void setInput(const std::function<int ()> &);
+    inline void setInput(std::function<int ()> &&);
 
     Token readToken();
 
 private:
-    std::function<int ()> charReader_;
+    std::function<int ()> input_;
     std::list<int> prereadChars_;
-    int lineNumber_ = 1;
-    int columnNumber_ = 1;
+    int lineNumber_;
+    int columnNumber_;
 
     int doReadChar();
     int peekChar(int);
@@ -43,15 +45,23 @@ private:
 };
 
 
-Scanner::Scanner(const std::function<int ()> &charReader)
-    : charReader_(charReader)
+Scanner::Scanner()
+    : input_([] () -> int { return -1; }), lineNumber_(1), columnNumber_(1)
 {
 }
 
 
-Scanner::Scanner(std::function<int ()> &&charReader)
-    : charReader_(std::move(charReader))
+void
+Scanner::setInput(const std::function<int ()> &input)
 {
+    input_ = input;
+}
+
+
+void
+Scanner::setInput(std::function<int ()> &&input)
+{
+    input_ = std::move(input);
 }
 
 } // namespace OYC

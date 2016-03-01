@@ -38,10 +38,10 @@ Parser::readProgram()
 Token
 Parser::doReadToken()
 {
-    Token token = tokenReader_();
+    Token token = input_();
 
     while (token.type == TokenType::WhiteSpace || token.type == TokenType::Comment) {
-        token = tokenReader_();
+        token = input_();
     }
 
     if (token.type == TokenType::Illegal) {

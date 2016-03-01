@@ -7,7 +7,7 @@
 
 namespace OYC {
 
-enum class TokenType: std::uint32_t
+enum class TokenType : std::uint32_t
 {
     No = 0,
 

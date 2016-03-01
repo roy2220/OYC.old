@@ -45,7 +45,7 @@ Scanner::readToken()
 int
 Scanner::doReadChar()
 {
-    return charReader_();
+    return input_();
 }
 
 
