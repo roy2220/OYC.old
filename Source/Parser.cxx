@@ -240,27 +240,12 @@ Parser::matchIfStatement()
     match->condition = matchExpression1();
     ExpectToken(peekToken(1), MakeTokenType(')'));
     readToken();
+    matchBlock(&match->thenBody);
     const Token *token = &peekToken(1);
-
-    if (token->type == MakeTokenType('{')) {
-        readToken();
-        matchStatements(MakeTokenType('}'), &match->thenBody);
-    } else {
-        matchStatements(TokenType::No, &match->thenBody);
-    }
-
-    token = &peekToken(1);
 
     if (token->type == TokenType::ElseKeyword) {
         readToken();
-        token = &peekToken(1);
-
-        if (token->type == MakeTokenType('{')) {
-            readToken();
-            matchStatements(MakeTokenType('}'), &match->elseBody);
-        } else {
-            matchStatements(TokenType::No, &match->elseBody);
-        }
+        matchBlock(&match->elseBody);
     }
 
     return match;
@@ -319,15 +304,7 @@ Parser::matchWhileStatement()
     match->condition = matchExpression1();
     ExpectToken(peekToken(1), MakeTokenType(')'));
     readToken();
-    const Token *token = &peekToken(1);
-
-    if (token->type == MakeTokenType('{')) {
-        readToken();
-        matchStatements(MakeTokenType('}'), &match->body);
-    } else {
-        matchStatements(TokenType::No, &match->body);
-    }
-
+    matchBlock(&match->body);
     return match;
 }
 
@@ -337,15 +314,7 @@ Parser::matchDoWhileStatement()
 {
     auto match = std::make_unique<DoWhileStatement>();
     readToken();
-    const Token *token = &peekToken(1);
-
-    if (token->type == MakeTokenType('{')) {
-        readToken();
-        matchStatements(MakeTokenType('}'), &match->body);
-    } else {
-        matchStatements(TokenType::No, &match->body);
-    }
-
+    matchBlock(&match->body);
     ExpectToken(peekToken(1), TokenType::WhileKeyword);
     SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType('('));
@@ -367,12 +336,12 @@ Parser::matchForStatement()
     ExpectToken(peekToken(1), MakeTokenType('('));
     readToken();
     const Token *token = &peekToken(1);
-    ExpectToken(*token, TokenType::AutoKeyword, MakeTokenType(';'));
 
-    if (token->type == TokenType::AutoKeyword) {
-        match->initialization = matchAutoStatement();
-    } else {
+    if (token->type == MakeTokenType(';')) {
         readToken();
+    } else {
+        ExpectToken(*token, TokenType::AutoKeyword);
+        match->initialization = matchAutoStatement();
     }
 
     token = &peekToken(1);
@@ -391,15 +360,7 @@ Parser::matchForStatement()
     }
 
     readToken();
-    token = &peekToken(1);
-
-    if (token->type == MakeTokenType('{')) {
-        readToken();
-        matchStatements(MakeTokenType('}'), &match->body);
-    } else {
-        matchStatements(TokenType::No, &match->body);
-    }
-
+    matchBlock(&match->body);
     return match;
 }
 
@@ -424,15 +385,7 @@ Parser::matchForeachStatement()
     match->collection = matchExpression1();
     ExpectToken(peekToken(1), MakeTokenType(')'));
     readToken();
-    const Token *token = &peekToken(1);
-
-    if (token->type == MakeTokenType('{')) {
-        readToken();
-        matchStatements(MakeTokenType('}'), &match->body);
-    } else {
-        matchStatements(TokenType::No, &match->body);
-    }
-
+    matchBlock(&match->body);
     return match;
 }
 
@@ -447,6 +400,20 @@ Parser::matchVariableDeclarator(VariableDeclarator *match)
     if (token->type == MakeTokenType('=')) {
         readToken();
         match->initializer = matchExpression2();
+    }
+}
+
+
+void
+Parser::matchBlock(std::vector<std::unique_ptr<Statement>> *match)
+{
+    const Token *token = &peekToken(1);
+
+    if (token->type == MakeTokenType('{')) {
+        readToken();
+        matchStatements(MakeTokenType('}'), match);
+    } else {
+        matchStatements(TokenType::No, match);
     }
 }
 
@@ -967,9 +934,8 @@ Parser::matchFunctionLiteral()
     }
 
     readToken();
-    ExpectToken(peekToken(1), MakeTokenType('{'));
-    readToken();
-    matchStatements(MakeTokenType('}'), &match->body);
+    matchBlock(&match->body);
+    return match;
 }
 
 

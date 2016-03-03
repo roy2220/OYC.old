@@ -64,6 +64,7 @@ private:
     std::unique_ptr<Statement> matchForeachStatement();
 
     void matchVariableDeclarator(VariableDeclarator *);
+    void matchBlock(std::vector<std::unique_ptr<Statement>> *);
     void matchCaseClause(CaseClause *);
 
     std::unique_ptr<Expression> matchExpression1();
