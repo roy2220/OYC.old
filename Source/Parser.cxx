@@ -826,7 +826,7 @@ const std::string *
 Parser::getIdentifier()
 {
     std::pair<std::unordered_set<std::string>::iterator
-              , bool> result = programData_->identifiers.insert(readToken().value);
+              , bool> result = programData_->strings.insert(readToken().value);
     return &*result.first;
 }
 
@@ -934,7 +934,9 @@ Parser::matchFunctionLiteral()
     }
 
     readToken();
-    matchBlock(&match->body);
+    ExpectToken(peekToken(1), MakeTokenType('{'));
+    readToken();
+    matchStatements(MakeTokenType('}'), &match->body);
     return match;
 }
 

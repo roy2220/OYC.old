@@ -38,7 +38,6 @@ struct FunctionLiteral
 struct ProgramData
 {
     std::unordered_set<std::string> strings;
-    std::unordered_set<std::string> identifiers;
     std::list<ArrayLiteral> arrayLiterals;
     std::list<DictionaryLiteral> dictionaryLiterals;
     std::list<FunctionLiteral> functionLiterals;
