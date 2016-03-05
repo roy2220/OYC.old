@@ -13,8 +13,8 @@ struct Token;
 
 class Scanner final
 {
-    Scanner(Scanner &) = delete;
-    Scanner &operator=(Scanner &) = delete;
+    Scanner(const Scanner &) = delete;
+    Scanner &operator=(const Scanner &) = delete;
 
 public:
     inline explicit Scanner();

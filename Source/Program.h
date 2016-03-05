@@ -29,6 +29,7 @@ struct DictionaryLiteral
 
 struct FunctionLiteral
 {
+    std::vector<const std::string *> capture;
     std::vector<const std::string *> parameters;
     bool isVariadic = false;
     std::vector<std::unique_ptr<Statement>> body;
@@ -46,8 +47,8 @@ struct ProgramData
 
 struct Program
 {
-    std::vector<std::unique_ptr<Statement>> body;
     ProgramData data;
+    FunctionLiteral main;
 };
 
 } // namespace OYC

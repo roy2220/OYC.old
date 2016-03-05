@@ -13,8 +13,8 @@ struct InvocationExpression;
 
 class ExpressionVisitor
 {
-    ExpressionVisitor(ExpressionVisitor &) = delete;
-    ExpressionVisitor &operator=(ExpressionVisitor &) = delete;
+    ExpressionVisitor(const ExpressionVisitor &) = delete;
+    ExpressionVisitor &operator=(const ExpressionVisitor &) = delete;
 
 public:
     virtual void visitPrimaryExpression(const PrimaryExpression &) = 0;

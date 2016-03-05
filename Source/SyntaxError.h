@@ -13,7 +13,7 @@ namespace OYC {
 class SyntaxError final : public std::exception
 {
     SyntaxError(const SyntaxError &) = delete;
-    SyntaxError &operator=(SyntaxError &) = delete;
+    SyntaxError &operator=(const SyntaxError &) = delete;
 
 public:
     inline SyntaxError(SyntaxError &&);
@@ -24,6 +24,7 @@ public:
     static SyntaxError UnexpectedToken(const Token &, TokenType, TokenType = TokenType::No);
     static SyntaxError UnexpectedToken(const Token &, const std::string &);
     static SyntaxError DuplicateDefaultLabel(const Token &);
+    static SyntaxError UndeclaredVariable(const Token &);
 
 private:
     std::string message_;

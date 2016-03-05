@@ -6,11 +6,27 @@
 
 #include "Expression.h"
 #include "Program.h"
+#include "ScopeExit.h"
 #include "Statement.h"
 #include "SyntaxError.h"
 
 
 namespace OYC {
+
+#define VARIABLE_NAME_CLEANUP                               \
+    [this, n = context_->variableNames.size()] () -> void { \
+        auto &v = context_->variableNames;                  \
+        v.erase(v.begin() + n, v.end());                    \
+    }
+
+
+struct ParseContext
+{
+    ParseContext *prev = nullptr;
+    FunctionLiteral *functionLiteral = nullptr;;
+    std::vector<const std::string *> variableNames;
+};
+
 
 namespace {
 
@@ -18,6 +34,7 @@ void SetStatementPosition(Statement *, const Token &);
 void ExpectToken(const Token &, TokenType);
 void ExpectToken(const Token &, TokenType, TokenType);
 std::string EvaluateStringLiteral(const std::string &);
+const std::string *FindVariableName(const std::string &, const ParseContext *);
 
 bool isodigit(int);
 int odigit2int(char);
@@ -30,7 +47,8 @@ Program
 Parser::readProgram()
 {
     Program program;
-    matchProgram(&program);
+    programData_ = &program.data;
+    matchProgramMain(&program.main);
     return program;
 }
 
@@ -77,16 +95,17 @@ Parser::readToken()
 
 
 void
-Parser::matchProgram(Program *match)
+Parser::matchProgramMain(FunctionLiteral *match)
 {
-    programData_ = &match->data;
-    matchStatements(TokenType::EndOfFile, &match->body);
-    programData_ = nullptr;
+    ParseContext context = {nullptr, match, {}};
+    context_ = &context;
+    match->isVariadic = true;
+    matchStatements(&match->body, TokenType::EndOfFile);
 }
 
 
 void
-Parser::matchStatements(TokenType terminator, std::vector<std::unique_ptr<Statement>> *match)
+Parser::matchStatements(std::vector<std::unique_ptr<Statement>> *match, TokenType terminator)
 {
     if (terminator == TokenType::No) {
         std::unique_ptr<Statement> statement = matchStatement();
@@ -233,6 +252,8 @@ Parser::matchReturnStatement()
 std::unique_ptr<Statement>
 Parser::matchIfStatement()
 {
+    ScopeExit scopeExit(VARIABLE_NAME_CLEANUP);
+    scopeExit.acquire();
     auto match = std::make_unique<IfStatement>();
     SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType('('));
@@ -297,6 +318,8 @@ Parser::matchSwitchStatement()
 std::unique_ptr<Statement>
 Parser::matchWhileStatement()
 {
+    ScopeExit scopeExit(VARIABLE_NAME_CLEANUP);
+    scopeExit.acquire();
     auto match = std::make_unique<WhileStatement>();
     SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType('('));
@@ -312,6 +335,8 @@ Parser::matchWhileStatement()
 std::unique_ptr<Statement>
 Parser::matchDoWhileStatement()
 {
+    ScopeExit scopeExit(VARIABLE_NAME_CLEANUP);
+    scopeExit.acquire();
     auto match = std::make_unique<DoWhileStatement>();
     readToken();
     matchBlock(&match->body);
@@ -331,6 +356,8 @@ Parser::matchDoWhileStatement()
 std::unique_ptr<Statement>
 Parser::matchForStatement()
 {
+    ScopeExit scopeExit(VARIABLE_NAME_CLEANUP);
+    scopeExit.acquire();
     auto match = std::make_unique<ForStatement>();
     SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType('('));
@@ -368,18 +395,18 @@ Parser::matchForStatement()
 std::unique_ptr<Statement>
 Parser::matchForeachStatement()
 {
+    ScopeExit scopeExit(VARIABLE_NAME_CLEANUP);
+    scopeExit.acquire();
     auto match = std::make_unique<ForeachStatement>();
     SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType('('));
     readToken();
     ExpectToken(peekToken(1), TokenType::AutoKeyword);
     readToken();
-    ExpectToken(peekToken(1), TokenType::Identifier);
-    match->variableName1 = getIdentifier();
+    match->variableName1 = getVariableName();
     ExpectToken(peekToken(1), MakeTokenType(','));
     readToken();
-    ExpectToken(peekToken(1), TokenType::Identifier);
-    match->variableName2 = getIdentifier();
+    match->variableName2 = getVariableName();
     ExpectToken(peekToken(1), MakeTokenType(':'));
     readToken();
     match->collection = matchExpression1();
@@ -393,8 +420,7 @@ Parser::matchForeachStatement()
 void
 Parser::matchVariableDeclarator(VariableDeclarator *match)
 {
-    ExpectToken(peekToken(1), TokenType::Identifier);
-    match->name = getIdentifier();
+    match->name = getVariableName();
     const Token *token = &peekToken(1);
 
     if (token->type == MakeTokenType('=')) {
@@ -411,9 +437,9 @@ Parser::matchBlock(std::vector<std::unique_ptr<Statement>> *match)
 
     if (token->type == MakeTokenType('{')) {
         readToken();
-        matchStatements(MakeTokenType('}'), match);
+        matchStatements(match, MakeTokenType('}'));
     } else {
-        matchStatements(TokenType::No, match);
+        matchStatements(match, TokenType::No);
     }
 }
 
@@ -421,6 +447,8 @@ Parser::matchBlock(std::vector<std::unique_ptr<Statement>> *match)
 void
 Parser::matchCaseClause(CaseClause *match)
 {
+    ScopeExit scopeExit(VARIABLE_NAME_CLEANUP);
+    scopeExit.acquire();
     const Token *token = &peekToken(1);
 
     if (token->type == TokenType::CaseKeyword) {
@@ -589,6 +617,28 @@ Parser::matchExpression4()
     const Token *token = &peekToken(1);
 
     switch (token->type) {
+    case MakeTokenType('('):
+        token = &peekToken(2);
+
+        switch (token->type) {
+        case TokenType::BoolKeyword:
+        case TokenType::IntKeyword:
+        case TokenType::FloatKeyword:
+        case TokenType::StrKeyword: {
+                auto match = std::make_unique<UnaryExpression>();
+                match->type = UnaryExpressionType::Prefix;
+                readToken();
+                match->op = readToken().type;
+                ExpectToken(peekToken(1), MakeTokenType(')'));
+                readToken();
+                match->operand = matchExpression4();
+                return match;
+            }
+
+        default:
+            return matchExpression5();
+        }
+
     case MakeTokenType('+', '+'):
     case MakeTokenType('-', '-'):
     case MakeTokenType('+'):
@@ -723,8 +773,8 @@ Parser::matchExpression6()
 
     case TokenType::Identifier: {
             auto match = std::make_unique<PrimaryExpression>();
-            match->type = PrimaryExpressionType::Identifier;
-            match->identifier = getIdentifier();
+            match->type = PrimaryExpressionType::VariableName;
+            match->string = searchVariableName();
             return match;
         }
 
@@ -900,8 +950,12 @@ Parser::matchDictionaryLiteral()
 const FunctionLiteral *
 Parser::matchFunctionLiteral()
 {
+    ScopeExit scopeExit([this] () -> void { context_ = context_->prev; });
     programData_->functionLiterals.emplace_back();
     FunctionLiteral *match = &programData_->functionLiterals.back();
+    ParseContext context = {context_, match, {}};
+    context_ = &context;
+    scopeExit.acquire();
     readToken();
     ExpectToken(peekToken(1), MakeTokenType('('));
     readToken();
@@ -913,8 +967,7 @@ Parser::matchFunctionLiteral()
 
             if (token->type == TokenType::AutoKeyword) {
                 readToken();
-                ExpectToken(peekToken(1), TokenType::Identifier);
-                match->parameters.push_back(getIdentifier());
+                match->parameters.push_back(getVariableName());
                 token = &peekToken(1);
                 ExpectToken(*token, MakeTokenType(','), MakeTokenType(')'));
 
@@ -936,7 +989,7 @@ Parser::matchFunctionLiteral()
     readToken();
     ExpectToken(peekToken(1), MakeTokenType('{'));
     readToken();
-    matchStatements(MakeTokenType('}'), &match->body);
+    matchStatements(&match->body, MakeTokenType('}'));
     return match;
 }
 
@@ -965,6 +1018,30 @@ Parser::matchDictionaryElement()
     ExpectToken(peekToken(1), MakeTokenType('='));
     readToken();
     return std::make_pair(std::move(key), matchExpression2());
+}
+
+
+const std::string *
+Parser::getVariableName()
+{
+    ExpectToken(peekToken(1), TokenType::Identifier);
+    const std::string *variableName = getIdentifier();
+    context_->variableNames.push_back(variableName);
+    return variableName;
+}
+
+
+const std::string *
+Parser::searchVariableName()
+{
+    Token token = readToken();
+    const std::string *variableName = FindVariableName(token.value, context_);
+
+    if (variableName == nullptr) {
+        throw SyntaxError::UndeclaredVariable(token);
+    }
+
+    return variableName;
 }
 
 
@@ -1109,6 +1186,29 @@ EvaluateStringLiteral(const std::string &stringLiteral)
 }
 
 
+const std::string *
+FindVariableName(const std::string &variableName, const ParseContext *parseContext)
+{
+    if (parseContext == nullptr) {
+        return nullptr;
+    } else {
+        for (const std::string *x : parseContext->variableNames) {
+            if (*x == variableName) {
+                return x;
+            }
+        }
+
+        const std::string *result = FindVariableName(variableName, parseContext->prev);
+
+        if (result != nullptr) {
+            parseContext->functionLiteral->capture.push_back(result);
+        }
+
+        return result;
+    }
+}
+
+
 bool
 isodigit(int c)
 {
@@ -1136,5 +1236,8 @@ xdigit2int(char c)
 }
 
 } // namespace
+
+
+#undef VARIABLE_NAME_CLEANUP
 
 } // namespace OYC

@@ -34,6 +34,10 @@ const char *PredefinedTokenTypeToString[] = {
     "for",
     "foreach",
     "sizeof",
+    "bool",
+    "int",
+    "float",
+    "str",
     "this"
 };
 

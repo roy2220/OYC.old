@@ -35,7 +35,7 @@ enum class PrimaryExpressionType : std::uint8_t
     Integer,
     FloatingPoint,
     String,
-    Identifier,
+    VariableName,
     ArrayLiteral,
     DictionaryLiteral,
     FunctionLiteral,
@@ -53,7 +53,6 @@ struct PrimaryExpression : Expression
         unsigned long integer;
         double floatingPoint;
         const std::string *string;
-        const std::string *identifier;
         const ArrayLiteral *arrayLiteral;
         const DictionaryLiteral *dictionaryLiteral;
         const FunctionLiteral *functionLiteral;

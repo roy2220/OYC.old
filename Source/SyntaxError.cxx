@@ -62,6 +62,17 @@ SyntaxError::DuplicateDefaultLabel(const Token &token)
 }
 
 
+SyntaxError
+SyntaxError::UndeclaredVariable(const Token &token)
+{
+    std::string description;
+    description += "undeclared variable `";
+    description += token.value;
+    description += '`';
+    return SyntaxError(token.lineNumber, token.columnNumber, description);
+}
+
+
 SyntaxError::SyntaxError(int lineNumber, int columnNumber, const std::string &description)
 {
     message_ += std::to_string(lineNumber);

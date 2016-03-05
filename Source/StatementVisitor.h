@@ -18,8 +18,8 @@ struct ForeachStatement;
 
 class StatementVisitor
 {
-    StatementVisitor(StatementVisitor &) = delete;
-    StatementVisitor &operator=(StatementVisitor &) = delete;
+    StatementVisitor(const StatementVisitor &) = delete;
+    StatementVisitor &operator=(const StatementVisitor &) = delete;
 
 public:
     virtual void visitExpressionStatement(const ExpressionStatement &) = 0;

@@ -42,6 +42,10 @@ enum class TokenType : std::uint32_t
     ForKeyword,
     ForeachKeyword,
     SizeofKeyword,
+    BoolKeyword,
+    IntKeyword,
+    FloatKeyword,
+    StrKeyword,
     ThisKeyword,
     KeywordEnd
 };

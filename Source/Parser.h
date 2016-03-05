@@ -15,6 +15,7 @@ namespace OYC {
 
 struct Program;
 struct ProgramData;
+struct ParseContext;
 struct Statement;
 struct VariableDeclarator;
 struct CaseClause;
@@ -26,8 +27,8 @@ struct FunctionLiteral;
 
 class Parser final
 {
-    Parser(Parser &) = delete;
-    Parser &operator=(Parser &) = delete;
+    Parser(const Parser &) = delete;
+    Parser &operator=(const Parser &) = delete;
 
 public:
     inline explicit Parser();
@@ -42,13 +43,14 @@ private:
     std::list<Token> prereadTokens_;
 
     ProgramData *programData_;
+    ParseContext *context_;
 
     Token doReadToken();
     const Token &peekToken(int);
     Token readToken();
 
-    void matchProgram(Program *);
-    void matchStatements(TokenType, std::vector<std::unique_ptr<Statement>> *);
+    void matchProgramMain(FunctionLiteral *);
+    void matchStatements(std::vector<std::unique_ptr<Statement>> *, TokenType);
 
     std::unique_ptr<Statement> matchStatement();
     std::unique_ptr<Statement> matchExpressionStatement();
@@ -87,11 +89,14 @@ private:
 
     std::unique_ptr<Expression> matchArrayElement();
     std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>> matchDictionaryElement();
+
+    const std::string *getVariableName();
+    const std::string *searchVariableName();
 };
 
 
 Parser::Parser()
-    : input_([] () -> Token { return {TokenType::EndOfFile, {}, 1, 1}; }), programData_(nullptr)
+    : input_([] () -> Token { return {TokenType::EndOfFile, {}, 1, 1}; })
 {
 }
 
