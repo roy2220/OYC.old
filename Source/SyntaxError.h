@@ -34,7 +34,7 @@ private:
 
 
 SyntaxError::SyntaxError(SyntaxError &&other)
-    : message_(std::move(other.message_))
+  : message_(std::move(other.message_))
 {
 }
 

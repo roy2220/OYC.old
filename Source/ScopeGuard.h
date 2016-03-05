@@ -27,13 +27,15 @@ private:
 
 
 ScopeGuard::ScopeGuard(const std::function<void ()> &rollback)
-    : rollback_(rollback), isEngaged_(false)
+  : rollback_(rollback),
+    isEngaged_(false)
 {
 }
 
 
 ScopeGuard::ScopeGuard(std::function<void ()> &&rollback)
-    : rollback_(std::move(rollback)), isEngaged_(false)
+  : rollback_(std::move(rollback)),
+    isEngaged_(false)
 {
 }
 

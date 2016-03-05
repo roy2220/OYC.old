@@ -96,7 +96,9 @@ private:
 
 
 Parser::Parser()
-    : input_([] () -> Token { return {TokenType::EndOfFile, {}, 1, 1}; })
+  : input_([] () -> Token {
+        return {TokenType::EndOfFile, {}, 1, 1};
+    })
 {
 }
 

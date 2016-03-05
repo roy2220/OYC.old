@@ -950,7 +950,10 @@ Parser::matchDictionaryLiteral()
 const FunctionLiteral *
 Parser::matchFunctionLiteral()
 {
-    ScopeGuard scopeGuard([this] () -> void { context_ = context_->prev; });
+    ScopeGuard scopeGuard([this, context = context_] () -> void {
+        context_ = context;
+    });
+
     programData_->functionLiterals.emplace_back();
     FunctionLiteral *match = &programData_->functionLiterals.back();
     ParseContext context = {context_, match, {}};

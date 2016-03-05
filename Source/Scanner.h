@@ -46,7 +46,11 @@ private:
 
 
 Scanner::Scanner()
-    : input_([] () -> int { return -1; }), lineNumber_(1), columnNumber_(1)
+  : input_([] () -> int {
+        return -1;
+    }),
+    lineNumber_(1),
+    columnNumber_(1)
 {
 }
 
