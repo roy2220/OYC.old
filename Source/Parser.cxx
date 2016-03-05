@@ -6,7 +6,7 @@
 
 #include "Expression.h"
 #include "Program.h"
-#include "ScopeExit.h"
+#include "ScopeGuard.h"
 #include "Statement.h"
 #include "SyntaxError.h"
 
@@ -252,8 +252,8 @@ Parser::matchReturnStatement()
 std::unique_ptr<Statement>
 Parser::matchIfStatement()
 {
-    ScopeExit scopeExit(VARIABLE_NAME_CLEANUP);
-    scopeExit.acquire();
+    ScopeGuard scopeGuard(VARIABLE_NAME_CLEANUP);
+    scopeGuard.commit();
     auto match = std::make_unique<IfStatement>();
     SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType('('));
@@ -318,8 +318,8 @@ Parser::matchSwitchStatement()
 std::unique_ptr<Statement>
 Parser::matchWhileStatement()
 {
-    ScopeExit scopeExit(VARIABLE_NAME_CLEANUP);
-    scopeExit.acquire();
+    ScopeGuard scopeGuard(VARIABLE_NAME_CLEANUP);
+    scopeGuard.commit();
     auto match = std::make_unique<WhileStatement>();
     SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType('('));
@@ -335,8 +335,8 @@ Parser::matchWhileStatement()
 std::unique_ptr<Statement>
 Parser::matchDoWhileStatement()
 {
-    ScopeExit scopeExit(VARIABLE_NAME_CLEANUP);
-    scopeExit.acquire();
+    ScopeGuard scopeGuard(VARIABLE_NAME_CLEANUP);
+    scopeGuard.commit();
     auto match = std::make_unique<DoWhileStatement>();
     readToken();
     matchBlock(&match->body);
@@ -356,8 +356,8 @@ Parser::matchDoWhileStatement()
 std::unique_ptr<Statement>
 Parser::matchForStatement()
 {
-    ScopeExit scopeExit(VARIABLE_NAME_CLEANUP);
-    scopeExit.acquire();
+    ScopeGuard scopeGuard(VARIABLE_NAME_CLEANUP);
+    scopeGuard.commit();
     auto match = std::make_unique<ForStatement>();
     SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType('('));
@@ -395,8 +395,8 @@ Parser::matchForStatement()
 std::unique_ptr<Statement>
 Parser::matchForeachStatement()
 {
-    ScopeExit scopeExit(VARIABLE_NAME_CLEANUP);
-    scopeExit.acquire();
+    ScopeGuard scopeGuard(VARIABLE_NAME_CLEANUP);
+    scopeGuard.commit();
     auto match = std::make_unique<ForeachStatement>();
     SetStatementPosition(match.get(), readToken());
     ExpectToken(peekToken(1), MakeTokenType('('));
@@ -447,8 +447,8 @@ Parser::matchBlock(std::vector<std::unique_ptr<Statement>> *match)
 void
 Parser::matchCaseClause(CaseClause *match)
 {
-    ScopeExit scopeExit(VARIABLE_NAME_CLEANUP);
-    scopeExit.acquire();
+    ScopeGuard scopeGuard(VARIABLE_NAME_CLEANUP);
+    scopeGuard.commit();
     const Token *token = &peekToken(1);
 
     if (token->type == TokenType::CaseKeyword) {
@@ -950,12 +950,12 @@ Parser::matchDictionaryLiteral()
 const FunctionLiteral *
 Parser::matchFunctionLiteral()
 {
-    ScopeExit scopeExit([this] () -> void { context_ = context_->prev; });
+    ScopeGuard scopeGuard([this] () -> void { context_ = context_->prev; });
     programData_->functionLiterals.emplace_back();
     FunctionLiteral *match = &programData_->functionLiterals.back();
     ParseContext context = {context_, match, {}};
     context_ = &context;
-    scopeExit.acquire();
+    scopeGuard.commit();
     readToken();
     ExpectToken(peekToken(1), MakeTokenType('('));
     readToken();
