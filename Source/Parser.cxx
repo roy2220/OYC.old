@@ -34,7 +34,7 @@ void SetStatementPosition(Statement *, const Token &);
 void ExpectToken(const Token &, TokenType);
 void ExpectToken(const Token &, TokenType, TokenType);
 std::string EvaluateStringLiteral(const std::string &);
-const std::string *FindVariableName(const std::string &, const ParseContext *);
+const std::string *FindVariableName(const std::string &, ParseContext *);
 
 bool isodigit(int);
 int odigit2int(char);
@@ -1187,7 +1187,7 @@ EvaluateStringLiteral(const std::string &stringLiteral)
 
 
 const std::string *
-FindVariableName(const std::string &variableName, const ParseContext *parseContext)
+FindVariableName(const std::string &variableName, ParseContext *parseContext)
 {
     if (parseContext == nullptr) {
         return nullptr;
@@ -1202,6 +1202,7 @@ FindVariableName(const std::string &variableName, const ParseContext *parseConte
 
         if (result != nullptr) {
             parseContext->functionLiteral->capture.push_back(result);
+            parseContext->variableNames.push_back(result);
         }
 
         return result;
