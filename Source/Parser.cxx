@@ -33,7 +33,7 @@ public:
     const std::string *searchVariableName(const std::string &);
 
 private:
-    ParseContext *const prev_;
+    ParseContext *const super_;
     FunctionLiteral *const functionLiteral_;
     std::vector<const std::string *> variableNames_;
 };
@@ -960,8 +960,8 @@ Parser::matchDictionaryLiteral()
 const FunctionLiteral *
 Parser::matchFunctionLiteral()
 {
-    ScopeGuard scopeGuard([this, context = context_] () -> void {
-        context_ = context;
+    ScopeGuard scopeGuard([this, c = context_] () -> void {
+        context_ = c;
     });
 
     programData_->functionLiterals.emplace_back();
@@ -1058,8 +1058,9 @@ Parser::findVariableName()
 }
 
 
-ParseContext::ParseContext(ParseContext *prev, FunctionLiteral *functionLiteral)
-  : prev_(prev), functionLiteral_(functionLiteral)
+ParseContext::ParseContext(ParseContext *super, FunctionLiteral *functionLiteral)
+  : super_(super),
+    functionLiteral_(functionLiteral)
 {
 }
 
@@ -1094,13 +1095,13 @@ ParseContext::searchVariableName(const std::string &variableName)
         }
     }
 
-    if (prev_ == nullptr) {
+    if (super_ == nullptr) {
         return nullptr;
     } else {
-        const std::string *result = prev_->searchVariableName(variableName);
+        const std::string *result = super_->searchVariableName(variableName);
 
         if (result != nullptr) {
-            functionLiteral_->capture.push_back(result);
+            functionLiteral_->superVariableNames.push_back(result);
             variableNames_.push_back(result);
         }
 

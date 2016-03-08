@@ -29,9 +29,9 @@ struct DictionaryLiteral
 
 struct FunctionLiteral
 {
-    std::vector<const std::string *> capture;
     std::vector<const std::string *> parameters;
     bool isVariadic = false;
+    std::vector<const std::string *> superVariableNames;
     std::vector<std::unique_ptr<Statement>> body;
 };
 
