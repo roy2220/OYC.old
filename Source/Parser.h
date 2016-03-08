@@ -15,7 +15,6 @@ namespace OYC {
 
 struct Program;
 struct ProgramData;
-struct ParseContext;
 struct Statement;
 struct VariableDeclarator;
 struct CaseClause;
@@ -23,6 +22,8 @@ struct Expression;
 struct ArrayLiteral;
 struct DictionaryLiteral;
 struct FunctionLiteral;
+
+class ParseContext;
 
 
 class Parser final
@@ -91,7 +92,7 @@ private:
     std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>> matchDictionaryElement();
 
     const std::string *getVariableName();
-    const std::string *searchVariableName();
+    const std::string *findVariableName();
 };
 
 

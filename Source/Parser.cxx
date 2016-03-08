@@ -13,18 +13,29 @@
 
 namespace OYC {
 
-#define VARIABLE_NAME_CLEANUP                               \
-    [this, n = context_->variableNames.size()] () -> void { \
-        auto &v = context_->variableNames;                  \
-        v.erase(v.begin() + n, v.end());                    \
+#define VARIABLE_NAME_CLEANUP                                     \
+    [this, n = context_->getNumberOfVariableNames()] () -> void { \
+        context_->deleteVariableNames(n);                         \
     }
 
 
-struct ParseContext
+class ParseContext final
 {
-    ParseContext *prev = nullptr;
-    FunctionLiteral *functionLiteral = nullptr;;
-    std::vector<const std::string *> variableNames;
+    ParseContext(const ParseContext &) = delete;
+    ParseContext &operator=(const ParseContext &) = delete;
+
+public:
+    explicit ParseContext(ParseContext *, FunctionLiteral *);
+
+    int getNumberOfVariableNames() const;
+    void addVariableName(const std::string *);
+    void deleteVariableNames(int);
+    const std::string *searchVariableName(const std::string &);
+
+private:
+    ParseContext *const prev_;
+    FunctionLiteral *const functionLiteral_;
+    std::vector<const std::string *> variableNames_;
 };
 
 
@@ -34,7 +45,6 @@ void SetStatementPosition(Statement *, const Token &);
 void ExpectToken(const Token &, TokenType);
 void ExpectToken(const Token &, TokenType, TokenType);
 std::string EvaluateStringLiteral(const std::string &);
-const std::string *FindVariableName(const std::string &, ParseContext *);
 
 bool isodigit(int);
 int odigit2int(char);
@@ -97,7 +107,7 @@ Parser::readToken()
 void
 Parser::matchProgramMain(FunctionLiteral *match)
 {
-    ParseContext context = {nullptr, match, {}};
+    ParseContext context(nullptr, match);
     context_ = &context;
     match->isVariadic = true;
     matchStatements(&match->body, TokenType::EndOfFile);
@@ -774,7 +784,7 @@ Parser::matchExpression6()
     case TokenType::Identifier: {
             auto match = std::make_unique<PrimaryExpression>();
             match->type = PrimaryExpressionType::VariableName;
-            match->string = searchVariableName();
+            match->string = findVariableName();
             return match;
         }
 
@@ -956,7 +966,7 @@ Parser::matchFunctionLiteral()
 
     programData_->functionLiterals.emplace_back();
     FunctionLiteral *match = &programData_->functionLiterals.back();
-    ParseContext context = {context_, match, {}};
+    ParseContext context(context_, match);
     context_ = &context;
     scopeGuard.commit();
     readToken();
@@ -1029,22 +1039,73 @@ Parser::getVariableName()
 {
     ExpectToken(peekToken(1), TokenType::Identifier);
     const std::string *variableName = getIdentifier();
-    context_->variableNames.push_back(variableName);
+    context_->addVariableName(variableName);
     return variableName;
 }
 
 
 const std::string *
-Parser::searchVariableName()
+Parser::findVariableName()
 {
     Token token = readToken();
-    const std::string *variableName = FindVariableName(token.value, context_);
+    const std::string *variableName = context_->searchVariableName(token.value);
 
     if (variableName == nullptr) {
         throw SyntaxError::UndeclaredVariable(token);
     }
 
     return variableName;
+}
+
+
+ParseContext::ParseContext(ParseContext *prev, FunctionLiteral *functionLiteral)
+  : prev_(prev), functionLiteral_(functionLiteral)
+{
+}
+
+
+int
+ParseContext::getNumberOfVariableNames() const
+{
+    return static_cast<int>(variableNames_.size());
+}
+
+
+void
+ParseContext::addVariableName(const std::string *variableName)
+{
+    variableNames_.push_back(variableName);
+}
+
+
+void
+ParseContext::deleteVariableNames(int numberOfVariableNames)
+{
+    variableNames_.erase(variableNames_.begin() + numberOfVariableNames, variableNames_.end());
+}
+
+
+const std::string *
+ParseContext::searchVariableName(const std::string &variableName)
+{
+    for (const std::string *x : variableNames_) {
+        if (*x == variableName) {
+            return x;
+        }
+    }
+
+    if (prev_ == nullptr) {
+        return nullptr;
+    } else {
+        const std::string *result = prev_->searchVariableName(variableName);
+
+        if (result != nullptr) {
+            functionLiteral_->capture.push_back(result);
+            variableNames_.push_back(result);
+        }
+
+        return result;
+    }
 }
 
 
@@ -1185,30 +1246,6 @@ EvaluateStringLiteral(const std::string &stringLiteral)
                 c = *it;
             }
         }
-    }
-}
-
-
-const std::string *
-FindVariableName(const std::string &variableName, ParseContext *parseContext)
-{
-    if (parseContext == nullptr) {
-        return nullptr;
-    } else {
-        for (const std::string *x : parseContext->variableNames) {
-            if (*x == variableName) {
-                return x;
-            }
-        }
-
-        const std::string *result = FindVariableName(variableName, parseContext->prev);
-
-        if (result != nullptr) {
-            parseContext->functionLiteral->capture.push_back(result);
-            parseContext->variableNames.push_back(result);
-        }
-
-        return result;
     }
 }
 
