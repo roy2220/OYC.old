@@ -42,6 +42,8 @@ private:
     void matchNumberLiteralToken16(Token *);
     void matchStringLiteralToken(Token *);
     void matchNameToken(Token *);
+
+    bool matchEscapeChar(std::string *);
 };
 
 

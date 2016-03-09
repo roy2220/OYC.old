@@ -4,11 +4,11 @@
 #include <cstdlib>
 #include <iterator>
 
+#include "Error.h"
 #include "Expression.h"
 #include "Program.h"
 #include "ScopeGuard.h"
 #include "Statement.h"
-#include "SyntaxError.h"
 
 
 namespace OYC {
@@ -44,7 +44,8 @@ namespace {
 void SetStatementPosition(Statement *, const Token &);
 void ExpectToken(const Token &, TokenType);
 void ExpectToken(const Token &, TokenType, TokenType);
-std::string EvaluateStringLiteral(const std::string &);
+void EvaluateStringLiteral(const std::string &, std::string *);
+int UnescapeChar(const char **);
 
 bool isodigit(int);
 int odigit2int(char);
@@ -70,10 +71,6 @@ Parser::doReadToken()
 
     while (token.type == TokenType::WhiteSpace || token.type == TokenType::Comment) {
         token = input_();
-    }
-
-    if (token.type == TokenType::Illegal) {
-        throw SyntaxError::IllegalToken(token);
     }
 
     return token;
@@ -111,6 +108,7 @@ Parser::matchProgramMain(FunctionLiteral *match)
     context_ = &context;
     match->isVariadic = true;
     matchStatements(&match->body, TokenType::EndOfFile);
+    return;
 }
 
 
@@ -123,6 +121,8 @@ Parser::matchStatements(std::vector<std::unique_ptr<Statement>> *match, TokenTyp
         if (statement != nullptr) {
             match->push_back(std::move(statement));
         }
+
+        return;
     } else {
         for (const Token *token = &peekToken(1); token->type != terminator
              ; token = &peekToken(1)) {
@@ -134,6 +134,7 @@ Parser::matchStatements(std::vector<std::unique_ptr<Statement>> *match, TokenTyp
         }
 
         readToken();
+        return;
     }
 }
 
@@ -311,7 +312,7 @@ Parser::matchSwitchStatement()
             } else {
                 if (token->type == TokenType::DefaultKeyword) {
                     if (defaultLabelFlag) {
-                        throw SyntaxError::DuplicateDefaultLabel(*token);
+                        throw Error::DuplicateDefaultLabel(*token);
                     }
 
                     defaultLabelFlag = true;
@@ -437,6 +438,8 @@ Parser::matchVariableDeclarator(VariableDeclarator *match)
         readToken();
         match->initializer = matchExpression2();
     }
+
+    return;
 }
 
 
@@ -448,8 +451,10 @@ Parser::matchBlock(std::vector<std::unique_ptr<Statement>> *match)
     if (token->type == MakeTokenType('{')) {
         readToken();
         matchStatements(match, MakeTokenType('}'));
+        return;
     } else {
         matchStatements(match, TokenType::No);
+        return;
     }
 }
 
@@ -482,6 +487,8 @@ Parser::matchCaseClause(CaseClause *match)
 
         token = &peekToken(1);
     }
+
+    return;
 }
 
 
@@ -520,8 +527,7 @@ Parser::matchExpression2()
             ExpectToken(peekToken(1), MakeTokenType(':'));
             match->op[1] = readToken().type;
             match->operand3 = matchExpression2();
-            result = std::move(match);
-            break;
+            return match;
         }
 
     case MakeTokenType('='):
@@ -539,12 +545,12 @@ Parser::matchExpression2()
             match->operand1 = std::move(result);
             match->op = readToken().type;
             match->operand2 = matchExpression2();
-            result = std::move(match);
-            break;
+            return match;
         }
-    }
 
-    return result;
+    default:
+        return result;
+    }
 }
 
 
@@ -817,7 +823,7 @@ Parser::matchExpression6()
         }
 
     default:
-        throw SyntaxError::UnexpectedToken(*token, "primary-expression");
+        throw Error::UnexpectedToken(*token, "primary-expression");
     }
 }
 
@@ -868,11 +874,12 @@ Parser::getFloatingPoint()
 const std::string *
 Parser::getString()
 {
-    std::string string = EvaluateStringLiteral(readToken().value);
+    std::string string;
+    EvaluateStringLiteral(readToken().value, &string);
     const Token *token = &peekToken(1);
 
     while (token->type == TokenType::StringLiteral) {
-        string += EvaluateStringLiteral(readToken().value);
+        EvaluateStringLiteral(readToken().value, &string);
         token = &peekToken(1);
     }
 
@@ -1051,7 +1058,7 @@ Parser::findVariableName()
     const std::string *variableName = context_->searchVariableName(token.value);
 
     if (variableName == nullptr) {
-        throw SyntaxError::UndeclaredVariable(token);
+        throw Error::UndeclaredVariable(token);
     }
 
     return variableName;
@@ -1076,6 +1083,7 @@ void
 ParseContext::addVariableName(const std::string *variableName)
 {
     variableNames_.push_back(variableName);
+    return;
 }
 
 
@@ -1083,6 +1091,7 @@ void
 ParseContext::deleteVariableNames(int numberOfVariableNames)
 {
     variableNames_.erase(variableNames_.begin() + numberOfVariableNames, variableNames_.end());
+    return;
 }
 
 
@@ -1117,6 +1126,7 @@ SetStatementPosition(Statement *statement, const Token &token)
 {
     statement->lineNumber = token.lineNumber;
     statement->columnNumber = token.columnNumber;
+    return;
 }
 
 
@@ -1124,8 +1134,10 @@ void
 ExpectToken(const Token &token, TokenType tokenType)
 {
     if (token.type != tokenType) {
-        throw SyntaxError::UnexpectedToken(token, tokenType);
+        throw Error::UnexpectedToken(token, tokenType);
     }
+
+    return;
 }
 
 
@@ -1133,120 +1145,106 @@ void
 ExpectToken(const Token &token, TokenType tokenType1, TokenType tokenType2)
 {
     if (token.type != tokenType1 && token.type != tokenType2) {
-        throw SyntaxError::UnexpectedToken(token, tokenType1, tokenType2);
+        throw Error::UnexpectedToken(token, tokenType1, tokenType2);
+    }
+
+    return;
+}
+
+
+void
+EvaluateStringLiteral(const std::string &stringLiteral, std::string *string)
+{
+    const char *p = stringLiteral.data() + 1;
+    unsigned char c = *p;
+
+    for (;;) {
+        if (c == '\"') {
+            return;
+        } else {
+            *string += c == '\\' ? UnescapeChar(&p) : *p++;
+            c = *p;
+        }
     }
 }
 
 
-std::string
-EvaluateStringLiteral(const std::string &stringLiteral)
+int
+UnescapeChar(const char **escapeChar)
 {
-    std::string::const_iterator it = stringLiteral.begin() + 1;
-    unsigned char c = *it;
-    std::string string;
+    const char *&p = *escapeChar;
+    ++p;
+    unsigned char c = *p;
 
-    for (;;) {
-        if (c == '\\') {
-            ++it;
-            c = *it;
-            int ascii;
+    switch (c) {
+        int ascii;
 
-            switch (c) {
-            case '\"':
-            case '\'':
-            case '\?':
-            case '\\':
-                ascii = *it++;
-                c = *it;
-                break;
+    case '\"':
+    case '\'':
+    case '\?':
+    case '\\':
+        return *p++;
 
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-                ascii = odigit2int(*it++);
-                c = *it;
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+        ascii = odigit2int(*p++);
+        c = *p;
 
-                if (isodigit(c)) {
-                    ascii = ascii << 3 | odigit2int(*it++);
-                    c = *it;
+        if (isodigit(c)) {
+            ascii = ascii << 3 | odigit2int(*p++);
+            c = *p;
 
-                    if (isodigit(c)) {
-                        ascii = ascii << 3 | odigit2int(*it++);
-                        c = *it;
-                    }
-                }
-
-                break;
-
-            case 'a':
-                ascii = '\a';
-                ++it;
-                c = *it;
-                break;
-
-            case 'b':
-                ascii = '\b';
-                ++it;
-                c = *it;
-                break;
-
-            case 'f':
-                ascii = '\f';
-                ++it;
-                c = *it;
-                break;
-
-            case 'n':
-                ascii = '\n';
-                ++it;
-                c = *it;
-                break;
-
-            case 'r':
-                ascii = '\r';
-                ++it;
-                c = *it;
-                break;
-
-            case 't':
-                ascii = '\t';
-                ++it;
-                c = *it;
-                break;
-
-            case 'v':
-                ascii = '\v';
-                ++it;
-                c = *it;
-                break;
-
-            case 'x':
-                ++it;
-                ascii = xdigit2int(*it++);
-                c = *it;
-
-                if (std::isxdigit(c)) {
-                    ascii = ascii << 4 | xdigit2int(*it++);
-                    c = *it;
-                }
-
-                break;
-            }
-
-            string += ascii;
-        } else {
-            if (c == '\"') {
-                return string;
-            } else {
-                string += *it++;
-                c = *it;
+            if (isodigit(c)) {
+                ascii = ascii << 3 | odigit2int(*p++);
             }
         }
+
+        return ascii;
+
+    case 'a':
+        ++p;
+        return '\a';
+
+    case 'b':
+        ++p;
+        return '\b';
+
+    case 'f':
+        ++p;
+        return '\f';
+
+    case 'n':
+        ++p;
+        return '\n';
+
+    case 'r':
+        ++p;
+        return '\r';
+
+    case 't':
+        ++p;
+        return '\t';
+
+    case 'v':
+        ++p;
+        return '\v';
+
+    case 'x':
+        ++p;
+        ascii = xdigit2int(*p++);
+        c = *p;
+
+        if (std::isxdigit(c)) {
+            ascii = ascii << 4 | xdigit2int(*p++);
+        }
+
+        return ascii;
     }
 }
 

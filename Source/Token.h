@@ -19,7 +19,6 @@ enum class TokenType : std::uint32_t
     FloatingPointLiteral,
     StringLiteral,
     Identifier,
-    Illegal,
     AbstractEnd,
 
     KeywordBegin = AbstractEnd,

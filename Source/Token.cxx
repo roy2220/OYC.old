@@ -14,7 +14,6 @@ const char *PredefinedTokenTypeToString[] = {
     "floating-point literal",
     "string literal",
     "identifier",
-    "illegal",
     "null",
     "false",
     "true",

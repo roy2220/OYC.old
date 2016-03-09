@@ -1,11 +1,11 @@
 #include "Scanner.h"
 
 #include <cctype>
-#include <cstring>
 #include <iterator>
 #include <type_traits>
 #include <unordered_map>
 
+#include "Error.h"
 #include "Token.h"
 
 
@@ -92,6 +92,7 @@ Scanner::matchToken(Token *match)
 
     if (c1 < 0) {
         match->type = TokenType::EndOfFile;
+        return;
     } else switch (c1) {
         int c2;
         int c3;
@@ -103,7 +104,7 @@ Scanner::matchToken(Token *match)
     case '\r':
     case ' ':
         matchWhiteSpaceToken(match);
-        break;
+        return;
 
     case '!':
     case '%':
@@ -118,15 +119,15 @@ Scanner::matchToken(Token *match)
         if (c2 == '=') {
             match->value += readChar();
             match->type = MakeTokenType(c1, c2);
+            return;
         } else {
             match->type = MakeTokenType(c1);
+            return;
         }
-
-        break;
 
     case '\"':
         matchStringLiteralToken(match);
-        break;
+        return;
 
     case '(':
     case ')':
@@ -141,7 +142,7 @@ Scanner::matchToken(Token *match)
     case '~':
         match->value += readChar();
         match->type = MakeTokenType(c1);
-        break;
+        return;
 
     case '+':
     case '-':
@@ -151,17 +152,18 @@ Scanner::matchToken(Token *match)
         if (c2 == c1 || c2 == '=') {
             match->value += readChar();
             match->type = MakeTokenType(c1, c2);
+            return;
         } else {
             match->type = MakeTokenType(c1);
+            return;
         }
-
-        break;
 
     case '.':
         c2 = peekChar(2);
 
         if (std::isdigit(c2)) {
             matchNumberLiteralToken(match);
+            return;
         } else {
             match->value += readChar();
 
@@ -169,30 +171,31 @@ Scanner::matchToken(Token *match)
                 match->value += readChar();
                 match->value += readChar();
                 match->type = MakeTokenType(c1, c2, c3);
+                return;
             } else {
                 match->type = MakeTokenType(c1);
+                return;
             }
         }
-
-        break;
 
     case '/':
         c2 = peekChar(2);
 
         if (c2 == '*' || c2 == '/') {
             matchCommentToken(match);
+            return;
         } else {
             match->value += readChar();
 
             if (c2 == '=') {
                 match->value += readChar();
                 match->type = MakeTokenType(c1, c2);
+                return;
             } else {
                 match->type = MakeTokenType(c1);
+                return;
             }
         }
-
-        break;
 
     case '<':
     case '>':
@@ -206,17 +209,19 @@ Scanner::matchToken(Token *match)
             if (c3 == '=') {
                 match->value += readChar();
                 match->type = MakeTokenType(c1, c2, c3);
+                return;
             } else {
                 match->type = MakeTokenType(c1, c1);
+                return;
             }
         } else if (c2 == '=') {
             match->value += readChar();
             match->type = MakeTokenType(c1, c2);
+            return;
         } else {
             match->type = MakeTokenType(c1);
+            return;
         }
-
-        break;
 
     case '0':
     case '1':
@@ -229,67 +234,40 @@ Scanner::matchToken(Token *match)
     case '8':
     case '9':
         matchNumberLiteralToken(match);
-        break;
+        return;
 
-    case 'A':
-    case 'B':
-    case 'C':
-    case 'D':
-    case 'E':
-    case 'F':
-    case 'G':
-    case 'H':
-    case 'I':
-    case 'J':
-    case 'K':
-    case 'L':
-    case 'M':
-    case 'N':
-    case 'O':
-    case 'P':
-    case 'Q':
-    case 'R':
-    case 'S':
-    case 'T':
-    case 'U':
-    case 'V':
-    case 'W':
-    case 'X':
-    case 'Y':
-    case 'Z':
+    case 'A': case 'a':
+    case 'B': case 'b':
+    case 'C': case 'c':
+    case 'D': case 'd':
+    case 'E': case 'e':
+    case 'F': case 'f':
+    case 'G': case 'g':
+    case 'H': case 'h':
+    case 'I': case 'i':
+    case 'J': case 'j':
+    case 'K': case 'k':
+    case 'L': case 'l':
+    case 'M': case 'm':
+    case 'N': case 'n':
+    case 'O': case 'o':
+    case 'P': case 'p':
+    case 'Q': case 'q':
+    case 'R': case 'r':
+    case 'S': case 's':
+    case 'T': case 't':
+    case 'U': case 'u':
+    case 'V': case 'v':
+    case 'W': case 'w':
+    case 'X': case 'x':
+    case 'Y': case 'y':
+    case 'Z': case 'z':
     case '_':
-    case 'a':
-    case 'b':
-    case 'c':
-    case 'd':
-    case 'e':
-    case 'f':
-    case 'g':
-    case 'h':
-    case 'i':
-    case 'j':
-    case 'k':
-    case 'l':
-    case 'm':
-    case 'n':
-    case 'o':
-    case 'p':
-    case 'q':
-    case 'r':
-    case 's':
-    case 't':
-    case 'u':
-    case 'v':
-    case 'w':
-    case 'x':
-    case 'y':
-    case 'z':
         matchNameToken(match);
-        break;
+        return;
 
     default:
-        match->value += readChar();
-        match->type = TokenType::Illegal;
+        throw Error::IllegalToken(*match);
     }
 }
 
@@ -306,6 +284,7 @@ Scanner::matchWhiteSpaceToken(Token *match)
     }
 
     match->type = TokenType::WhiteSpace;
+    return;
 }
 
 
@@ -331,8 +310,7 @@ Scanner::matchCommentToken(Token *match)
                 }
             } else {
                 if (c < 0) {
-                    match->type = TokenType::Illegal;
-                    return;
+                    throw Error::IllegalToken(*match);
                 }
 
                 match->value += readChar();
@@ -349,6 +327,7 @@ Scanner::matchCommentToken(Token *match)
         }
 
         match->type = TokenType::Comment;
+        return;
     }
 }
 
@@ -358,8 +337,10 @@ Scanner::matchNumberLiteralToken(Token *match)
 {
     if (peekChar(1) == '0' && peekChar(2) == 'x') {
         matchNumberLiteralToken16(match);
+        return;
     } else {
         matchNumberLiteralToken10(match);
+        return;
     }
 }
 
@@ -402,8 +383,7 @@ Scanner::matchNumberLiteralToken10(Token *match)
                 match->value += readChar();
             }
 
-            match->type = TokenType::Illegal;
-            return;
+            throw Error::IllegalToken(*match);
         }
 
         match->value += readChar();
@@ -417,11 +397,11 @@ Scanner::matchNumberLiteralToken10(Token *match)
 
     if (std::isalpha(c) || c == '_') {
         match->value += readChar();
-        match->type = TokenType::Illegal;
-        return;
+        throw Error::IllegalToken(*match);
     }
 
     match->type = floatingPointFlag ? TokenType::FloatingPointLiteral : TokenType::IntegerLiteral;
+    return;
 }
 
 
@@ -437,8 +417,7 @@ Scanner::matchNumberLiteralToken16(Token *match)
             match->value += readChar();
         }
 
-        match->type = TokenType::Illegal;
-        return;
+        throw Error::IllegalToken(*match);
     }
 
     match->value += readChar();
@@ -451,11 +430,11 @@ Scanner::matchNumberLiteralToken16(Token *match)
 
     if (std::isalpha(c) || c == '_') {
         match->value += readChar();
-        match->type = TokenType::Illegal;
-        return;
+        throw Error::IllegalToken(*match);
     }
 
     match->type = TokenType::IntegerLiteral;
+    return;
 }
 
 
@@ -466,95 +445,24 @@ Scanner::matchStringLiteralToken(Token *match)
     int c = peekChar(1);
 
     for (;;) {
-        if (c == '\\') {
+        if (c == '\"') {
             match->value += readChar();
-            c = peekChar(1);
-            bool missFlag = false;
-
-            switch (c) {
-            case '\"':
-            case '\'':
-            case '\?':
-            case '\\':
-            case 'a':
-            case 'b':
-            case 'f':
-            case 'n':
-            case 'r':
-            case 't':
-            case 'v':
-                match->value += readChar();
-                c = peekChar(1);
-                break;
-
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-                match->value += readChar();
-                c = peekChar(1);
-
-                if (isodigit(c)) {
-                    match->value += readChar();
-                    c = peekChar(1);
-
-                    if (isodigit(c)) {
-                        match->value += readChar();
-                        c = peekChar(1);
-                    }
-                }
-
-                break;
-
-            case 'x':
-                match->value += readChar();
-                c = peekChar(1);
-
-                if (!std::isxdigit(c)) {
-                    missFlag = true;
-                    break;
-                }
-
-                match->value += readChar();
-                c = peekChar(1);
-
-                if (std::isxdigit(c)) {
-                    match->value += readChar();
-                    c = peekChar(1);
-                }
-
-                break;
-
-            default:
-                missFlag = true;
-            }
-
-            if (missFlag) {
-                if (c >= 0 && c != '\n') {
-                    match->value += readChar();
-                }
-
-                match->type = TokenType::Illegal;
-                return;
-            }
+            match->type = TokenType::StringLiteral;
+            return;
         } else {
-            if (c == '\"') {
-                match->value += readChar();
-                match->type = TokenType::StringLiteral;
-                return;
+            if (c == '\\') {
+                if (!matchEscapeChar(&match->value)) {
+                    throw Error::IllegalToken(*match);
+                }
             } else {
                 if (c < 0 || c == '\n') {
-                    match->type = TokenType::Illegal;
-                    return;
+                    throw Error::IllegalToken(*match);
                 }
 
                 match->value += readChar();
-                c = peekChar(1);
             }
+
+            c = peekChar(1);
         }
     }
 }
@@ -574,6 +482,76 @@ Scanner::matchNameToken(Token *match)
     std::unordered_map<std::string, TokenType>::const_iterator it = KeywordToTokenType
                                                                     .find(match->value);
     match->type = it == KeywordToTokenType.end() ? TokenType::Identifier : it->second;
+    return;
+}
+
+
+bool
+Scanner::matchEscapeChar(std::string *match)
+{
+    *match += readChar();
+    int c = peekChar(1);
+
+    switch (c) {
+    case '\"':
+    case '\'':
+    case '\?':
+    case '\\':
+    case 'a':
+    case 'b':
+    case 'f':
+    case 'n':
+    case 'r':
+    case 't':
+    case 'v':
+        *match += readChar();
+        return true;
+
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+        *match += readChar();
+        c = peekChar(1);
+
+        if (isodigit(c)) {
+            *match += readChar();
+            c = peekChar(1);
+
+            if (isodigit(c)) {
+                *match += readChar();
+            }
+        }
+
+        return true;
+
+    case 'x':
+        *match += readChar();
+        c = peekChar(1);
+
+        if (!std::isxdigit(c)) {
+            break;
+        }
+
+        *match += readChar();
+        c = peekChar(1);
+
+        if (std::isxdigit(c)) {
+            *match += readChar();
+        }
+
+        return true;
+    }
+
+    if (c >= 0 && c != '\n') {
+        *match += readChar();
+    }
+
+    return false;
 }
 
 
